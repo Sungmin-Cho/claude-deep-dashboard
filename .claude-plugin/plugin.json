@@ -1,0 +1,9 @@
+{
+  "name": "deep-dashboard",
+  "version": "1.0.0",
+  "description": "Cross-plugin harness diagnostics — harnessability scoring and unified dashboard for the deep-suite ecosystem",
+  "author": { "name": "sungmin" },
+  "license": "MIT",
+  "keywords": ["harness", "dashboard", "harnessability", "diagnostics", "deep-suite"],
+  "category": "productivity"
+}

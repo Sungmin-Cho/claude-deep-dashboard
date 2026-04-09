@@ -1,0 +1,9 @@
+{
+  "name": "@deep-suite/deep-dashboard",
+  "version": "1.0.0",
+  "description": "Cross-plugin harness diagnostics for deep-suite",
+  "private": true,
+  "scripts": {
+    "test": "node --test lib/**/*.test.js"
+  }
+}
