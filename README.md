@@ -11,6 +11,17 @@ deep-dashboard provides two capabilities:
 
 ---
 
+### Role in Harness Engineering
+
+deep-dashboard is the **harness diagnostics layer** in the [Deep Suite](https://github.com/Sungmin-Cho/claude-deep-suite) ecosystem, implementing two concepts from the [Harness Engineering](https://martinfowler.com/articles/harness-engineering.html) framework:
+
+- **Harnessability Assessment**: Quantitative measurement of how "harness-able" a codebase is — 6 dimensions, 17 computational detectors, 0-10 score. The framework describes this concept qualitatively; deep-dashboard implements it as a concrete tool.
+- **Human Steering Loop**: Unified dashboard that aggregates sensor results from [deep-work](https://github.com/Sungmin-Cho/claude-deep-work), [deep-review](https://github.com/Sungmin-Cho/claude-deep-review), and [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs) into a single effectiveness score with action routing — closing the feedback loop the framework calls for.
+
+In the 2×2 matrix, deep-dashboard operates as a **Computational Sensor** in the Continuous timing band — it runs outside the development lifecycle to measure harness effectiveness over time.
+
+---
+
 ## Installation
 
 Install as a Claude Code plugin from the project root:

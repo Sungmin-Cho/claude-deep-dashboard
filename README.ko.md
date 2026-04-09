@@ -11,6 +11,17 @@ deep-dashboard는 두 가지 기능을 제공합니다:
 
 ---
 
+### 하네스 엔지니어링에서의 역할
+
+deep-dashboard는 [Deep Suite](https://github.com/Sungmin-Cho/claude-deep-suite) 생태계의 **하네스 진단 레이어**로, [Harness Engineering](https://martinfowler.com/articles/harness-engineering.html) 프레임워크의 두 가지 개념을 구현합니다:
+
+- **Harnessability 평가**: 코드베이스의 "하네스 가능성"을 정량적으로 측정 — 6차원, 17개 computational detector, 0-10 점수. 프레임워크는 이 개념을 정성적으로만 서술하지만, deep-dashboard는 구체적 도구로 구현.
+- **Human Steering Loop**: [deep-work](https://github.com/Sungmin-Cho/claude-deep-work), [deep-review](https://github.com/Sungmin-Cho/claude-deep-review), [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs)의 센서 결과를 통합하여 단일 effectiveness 점수 + 액션 라우팅으로 제공 — 프레임워크가 요구하는 피드백 루프를 닫음.
+
+2×2 매트릭스에서 deep-dashboard는 Continuous 타이밍 밴드의 **Computational Sensor**로 동작 — 개발 라이프사이클 밖에서 하네스 효과성을 시간에 걸쳐 측정합니다.
+
+---
+
 ## 설치
 
 프로젝트 루트에서 Claude Code 플러그인으로 설치:
