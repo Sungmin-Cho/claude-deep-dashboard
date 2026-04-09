@@ -1,3 +1,5 @@
+**English** | [한국어](./README.ko.md)
+
 # deep-dashboard
 
 Cross-plugin harness diagnostics for the [deep-suite](https://github.com/sungmin/deep-suite) ecosystem.

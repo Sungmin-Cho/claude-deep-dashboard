@@ -1,3 +1,5 @@
+**English** | [한국어](./CHANGELOG.ko.md)
+
 # Changelog
 
 ## 1.0.0 (2026-04-09)
