@@ -1,0 +1,63 @@
+{
+  "dimensions": [
+    {
+      "id": "type_safety",
+      "label": "Type Safety",
+      "weight": 0.25,
+      "checks": [
+        { "id": "tsconfig_strict",    "label": "TypeScript strict mode enabled" },
+        { "id": "tsconfig_exists",    "label": "tsconfig.json present" },
+        { "id": "mypy_strict",        "label": "mypy strict mode enabled" },
+        { "id": "python_type_hints",  "label": "Python type hints (py.typed or .pyi stubs)" }
+      ]
+    },
+    {
+      "id": "module_boundaries",
+      "label": "Module Boundaries",
+      "weight": 0.20,
+      "checks": [
+        { "id": "depcruiser_config",  "label": "dependency-cruiser config present" },
+        { "id": "src_dir_exists",     "label": "Organised source directory (src/lib/app)" },
+        { "id": "index_files",        "label": "Module entry-point index files present" }
+      ]
+    },
+    {
+      "id": "test_infra",
+      "label": "Test Infrastructure",
+      "weight": 0.20,
+      "checks": [
+        { "id": "test_framework",     "label": "Test framework installed" },
+        { "id": "test_files_exist",   "label": "Test files found" },
+        { "id": "coverage_config",    "label": "Coverage configuration present" }
+      ]
+    },
+    {
+      "id": "sensor_readiness",
+      "label": "Sensor Readiness",
+      "weight": 0.15,
+      "checks": [
+        { "id": "linter_config",      "label": "Linter configured" },
+        { "id": "typecheck_available","label": "Type-checker available" },
+        { "id": "lock_file",          "label": "Lock file present" }
+      ]
+    },
+    {
+      "id": "linter_formatter",
+      "label": "Linter & Formatter",
+      "weight": 0.10,
+      "checks": [
+        { "id": "linter_config_file", "label": "Linter config file present" },
+        { "id": "formatter_config",   "label": "Formatter configured" }
+      ]
+    },
+    {
+      "id": "ci_cd",
+      "label": "CI/CD",
+      "weight": 0.10,
+      "checks": [
+        { "id": "ci_config_exists",   "label": "CI config present" },
+        { "id": "ci_runs_tests",      "label": "CI pipeline runs tests" }
+      ]
+    }
+  ]
+}

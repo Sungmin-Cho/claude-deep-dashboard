@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Cross-plugin harness diagnostics for deep-suite",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "node --test lib/**/*.test.js"
   }
