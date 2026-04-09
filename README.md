@@ -82,7 +82,7 @@ Any dimension scoring below 5 contributes its failing checks to a recommendation
 
 Aggregates data from all installed v1 plugins into a single terminal view or markdown report.
 
-**Data sources (v1 supported plugins)**
+**Data sources (supported plugins)**
 
 | Plugin | Data read | Location |
 |---|---|---|
