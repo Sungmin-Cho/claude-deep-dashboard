@@ -1,0 +1,19 @@
+{
+  "updated_at": "2026-04-13T10:00:00Z",
+  "insights_for_deep_work": [
+    {
+      "pattern": "guard_clause",
+      "evidence": "keep_rate 0.35 across 3 projects, Q(v) +0.08 improvement",
+      "source_archive_ids": ["archive_001", "archive_003"],
+      "suggestion": "Phase 3 implement 시 guard clause 패턴 우선 적용"
+    }
+  ],
+  "insights_for_deep_review": [
+    {
+      "pattern": "error_handling",
+      "evidence": "experiments targeting error handling had 60% keep rate",
+      "source_archive_ids": ["archive_002"],
+      "suggestion": "review criteria에 error handling coverage 강화"
+    }
+  ]
+}
