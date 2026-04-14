@@ -2,6 +2,18 @@
 
 # Changelog
 
+## [1.1.0] — 2026-04-14
+
+### Added
+- **Cross-plugin feedback (Phase 3B):**
+  - `collectDeepEvolve()` in collector for evolve-receipt.json consumption
+  - `evolve` dimension (weight 0.20) in effectiveness scorer with weight redistribution
+  - `extractEvolveFindings()` with 5 detection rules (low-keep, high-crash, low-q, stale, no-transfer)
+  - Q(v) decline detection with 0.05 noise threshold
+  - Evolve section in CLI and Markdown formatter output
+  - `action-router.test.js` (new test file)
+  - Contract test fixtures for cross-plugin schema validation
+
 ## 1.0.0 (2026-04-09)
 
 ### Features
