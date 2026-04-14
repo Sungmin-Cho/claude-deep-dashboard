@@ -127,6 +127,18 @@ Fitness rules, review receipts, docs 오래됨 검사의 결과가 `suggested_ac
 - **CLI 테이블** — 터미널에 직접 렌더링되는 박스 드로잉 ASCII 테이블
 - **Markdown 보고서** — 요청 시 프로젝트 루트에 `harness-report-YYYY-MM-DD.md` 파일 저장
 
+#### deep-evolve 연동 (v1.1)
+
+- **데이터 소스**: `.deep-evolve/evolve-receipt.json`
+- **Effectiveness 차원**: `evolve` (가중치 0.20) — `quality_score` (0-100)를 0-10으로 정규화
+- **감지 규칙** (5개):
+  - `evolve-low-keep`: keep rate 15% 미만 → 전략 개선 권장
+  - `evolve-high-crash`: crash rate 20% 초과 → eval harness 점검
+  - `evolve-low-q`: Q(v) 궤적 하락 (delta > 0.05) → 전략 검토
+  - `evolve-stale`: receipt 30일 이상 경과 → 추가 실험 권장
+  - `evolve-no-transfer`: 전이 학습 미활용 → meta-archive 구축 권장
+- **포맷터**: CLI 및 Markdown 출력에 Evolve 섹션 표시 (폐기된 세션은 별도 표시)
+
 ---
 
 ## Skills

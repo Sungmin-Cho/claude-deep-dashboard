@@ -127,6 +127,18 @@ Findings from fitness rules, review receipts, and docs staleness checks are mapp
 - **CLI table** — box-drawing ASCII table rendered directly in the terminal
 - **Markdown report** — `harness-report-YYYY-MM-DD.md` written to the project root on request
 
+#### deep-evolve Integration (v1.1)
+
+- **Data Source**: `.deep-evolve/evolve-receipt.json`
+- **Effectiveness Dimension**: `evolve` (weight 0.20) — normalized from `quality_score` (0-100 → 0-10)
+- **Detection Rules** (5):
+  - `evolve-low-keep`: keep rate < 15% → strategy refinement 권장
+  - `evolve-high-crash`: crash rate > 20% → eval harness 점검
+  - `evolve-low-q`: Q(v) trajectory 하락 (delta > 0.05) → strategy 검토
+  - `evolve-stale`: receipt 30일 이상 경과 → 추가 실험 권장
+  - `evolve-no-transfer`: 전이 학습 미활용 → meta-archive 구축 권장
+- **Formatter**: CLI 및 Markdown 출력에 Evolve 섹션 표시 (discarded 세션은 별도 표시)
+
 ---
 
 ## Skills
