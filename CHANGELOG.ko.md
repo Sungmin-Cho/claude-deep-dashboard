@@ -2,6 +2,18 @@
 
 # 변경 이력
 
+## [1.1.0] — 2026-04-14
+
+### 추가
+- **크로스 플러그인 피드백 (Phase 3B):**
+  - `collectDeepEvolve()` — evolve-receipt.json 수집
+  - `evolve` 차원 (가중치 0.20) effectiveness 점수에 추가
+  - `extractEvolveFindings()` — 5개 감지 규칙 (low-keep, high-crash, low-q, stale, no-transfer)
+  - Q(v) 하락 감지 (delta > 0.05 노이즈 필터)
+  - CLI 및 Markdown 포맷터에 Evolve 섹션 표시
+  - `action-router.test.js` 신규 테스트 파일
+  - 크로스 플러그인 스키마 검증용 contract test fixture
+
 ## 1.0.0 (2026-04-09)
 
 ### 추가
