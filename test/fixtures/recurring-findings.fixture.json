@@ -1,0 +1,22 @@
+{
+  "updated_at": "2026-04-13T10:00:00Z",
+  "taxonomy_version": "1.0",
+  "findings": [
+    {
+      "category": "error-handling",
+      "severity": "critical",
+      "occurrences": 5,
+      "example_files": ["src/api/handler.ts:45", "src/worker/processor.ts:120"],
+      "description": "async 함수에서 try-catch 없이 외부 API 호출",
+      "source_reports": ["2026-04-10-review.md", "2026-04-12-review.md"]
+    },
+    {
+      "category": "naming-convention",
+      "severity": "warning",
+      "occurrences": 3,
+      "example_files": ["src/utils/format.ts", "src/helpers/convert.ts"],
+      "description": "camelCase/snake_case 혼용",
+      "source_reports": ["2026-04-10-review.md", "2026-04-11-review.md", "2026-04-12-review.md"]
+    }
+  ]
+}

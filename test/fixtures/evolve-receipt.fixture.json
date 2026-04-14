@@ -1,0 +1,44 @@
+{
+  "plugin": "deep-evolve",
+  "version": "2.1.0",
+  "timestamp": "2026-04-13T10:00:00Z",
+  "goal": "val_bpb minimize",
+  "eval_mode": "cli",
+  "experiments": {
+    "total": 80,
+    "kept": 20,
+    "discarded": 55,
+    "crashed": 5,
+    "keep_rate": 0.25
+  },
+  "score": {
+    "baseline": 0.998,
+    "current": 0.955,
+    "best": 0.952,
+    "improvement_pct": 4.6
+  },
+  "strategy_evolution": {
+    "outer_loop_generations": 4,
+    "q_trajectory": [0.35, 0.42, 0.48, 0.51],
+    "strategy_versions": 3,
+    "best_generation": 3
+  },
+  "program": {
+    "versions": 3,
+    "meta_analyses": 2
+  },
+  "evaluation_epochs": 2,
+  "archives": {
+    "strategy_archive_size": 4,
+    "code_archive_size": 8,
+    "code_forks_used": 2
+  },
+  "meta_archive_updated": true,
+  "transfer": {
+    "received_from": "archive_001",
+    "adopted_patterns_kept": 0.7
+  },
+  "duration_minutes": 480,
+  "quality_score": 78,
+  "outcome": "merged"
+}
