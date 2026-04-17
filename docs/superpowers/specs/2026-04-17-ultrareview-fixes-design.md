@@ -5,10 +5,11 @@
 **Scope**: Fix 10 issues identified in the 2026-04-17 ultrareview report.
 **Branch**: `fix/ultrareview-v1.1.1`
 
-**Revision history**:
+**Revision history** (review artifacts are gitignored; commit SHAs preserve auditability):
 - Rev 1 (commit `d9e91e0`): initial spec.
-- Rev 2 (commit `0b51257`): incorporated first deep-review feedback (`.deep-review/reports/2026-04-17-142904-review.md`). Accepted 7 items (C-1, C-2, C-3, C-5, W-2, W-3, W-4), partial-accepted W-1, deferred W-5, rejected review-finding **C-4 (meta_archive_updated preservation)** as moot — Path A for C-3 meant action-router.js was no longer edited, so the preservation concern became vacuous. (This is distinct from the ultrareview's own "C-4" — that one, the README effectiveness weight table, is addressed by commit 5.)
-- Rev 3 (this commit): incorporates re-review feedback (`.deep-review/reports/2026-04-17-145458-review.md`). Fixed three verifiable technical defects introduced by Rev 2 (P-1 skill command, P-2 `test.skipIf`, P-3 prefix bypass) and four polish issues (N-1…N-4). See `.deep-review/responses/2026-04-17-150211-response.md`.
+- Rev 2 (commit `0b51257`): incorporated first deep-review feedback — accepted 7 items (realpath containment, pipe-escape coverage expansion, `received_from` schema as won't-fix M1, symbolic line refs, relative-path skill command as first attempt, Windows skip strategy, threshold rationale); partial-accepted narrowing TS detection; deferred `centerLine` full-width; rejected review-finding C-4 (meta_archive_updated preservation) as moot after choosing Path A for C-3. (Distinct from the ultrareview's own "C-4" — README effectiveness weight table — which is addressed by commit 5.)
+- Rev 3 (commit `943d815`): incorporates re-review feedback — fixed three verifiable technical defects introduced by Rev 2 (P-1 skill command relative-path was only valid when CWD is the plugin repo; P-2 `test.skipIf` does not exist in `node:test`; P-3 `startsWith` prefix bypass) and four polish issues (hardcoded line numbers in commit 1, test count drift, missing CHANGELOG files, C-4 label ambiguity).
+- Rev 4 (this commit): incorporates plan-review feedback — replaced the two-branch env-var verification dance with direct use of documented `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` (no subagent detour, no broken shim fallback).
 
 ## Context
 
@@ -128,10 +129,13 @@ Addresses: **C3, C4, L1, L2, L3, L4** (ultrareview labels) + schema documentatio
 
 **Files**: `.claude-plugin/plugin.json`, `README.md`, `README.ko.md`, `CHANGELOG.md`, `CHANGELOG.ko.md`, `skills/deep-harnessability.md`, `skills/deep-harness-dashboard.md` (if affected).
 
-**Pre-commit verification step** (required before committing):
-- Consult `claude-code-guide` subagent to verify the exact env-var name Claude Code injects for a plugin's installation directory. Candidates: `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DIR}`, or other. Do the same for the user's project directory (likely `${CLAUDE_PROJECT_DIR}` but verify).
-- If verification succeeds: use the confirmed variables directly in the skill command.
-- If verification fails or is inconclusive: ship `scripts/run-scorer.sh` in the plugin — a tiny wrapper that self-resolves its own directory via `$(dirname "$0")` and invokes the scorer with the first arg as project root. The skill then calls `bash "PLUGIN_SELF/scripts/run-scorer.sh" "$PROJECT"`, and `PLUGIN_SELF` either uses the verified env var or is replaced at plugin-install time. Either way, the skill command is NOT `./lib/...` — that form breaks for any user whose CWD is not the plugin repo.
+**Skill command form** (verified via Claude Code documentation):
+- Claude Code injects `${CLAUDE_PLUGIN_ROOT}` (plugin install directory) and `${CLAUDE_PROJECT_DIR}` (user's active project directory) into bash blocks within skill markdown. Both are documented in the Hooks Reference and are available at skill-execution time.
+- The skill uses these directly:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/lib/harnessability/scorer.js" "${CLAUDE_PROJECT_DIR}"
+  ```
+- No subagent verification detour. No shim fallback script. If either variable is missing at runtime in some edge environment, that is a Claude Code bug to report — not something this plugin should paper over with a broken workaround.
 
 **Changes**:
 
@@ -142,7 +146,7 @@ Addresses: **C3, C4, L1, L2, L3, L4** (ultrareview labels) + schema documentatio
 | `README.md` / `README.ko.md` architecture diagram | Add `deep-evolve` as a fourth input arrow. |
 | `README.md` evolve section | Translate Korean fragments ("권장", "점검", "검토") into English. `README.ko.md` unchanged. |
 | `README.md` / `README.ko.md` evolve section | Add explicit schema note: `transfer.received_from: non-empty string \| null`. Empty-string or numeric sentinels are not part of the schema. |
-| `skills/deep-harnessability.md` | Replace `PLUGIN_DIR`/`PROJECT_ROOT` literals with the verified env-var form (or the `scripts/run-scorer.sh` shim — see pre-commit step). |
+| `skills/deep-harnessability.md` | Replace `PLUGIN_DIR`/`PROJECT_ROOT` literals with `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PROJECT_DIR}` as shown above. |
 | `CHANGELOG.md` / `CHANGELOG.ko.md` | Clarify `evolve-low-q` description: "the earliest of the last-3 Q(v) values is more than 0.05 above the most recent (i.e., the recent 3-point window is trending down)". |
 | `README.md` / `README.ko.md` evolve section | Same `evolve-low-q` clarification as above. |
 
@@ -173,7 +177,7 @@ Before opening the PR:
 
 | Risk | Mitigation |
 |---|---|
-| Claude Code plugin-root env var name is unknown / different across versions | Commit 5 pre-commit step verifies via `claude-code-guide`. If inconclusive, ships `scripts/run-scorer.sh` shim which is self-resolving and version-independent. Either path produces a working skill command. |
+| Claude Code plugin-root env var not set at runtime in some edge case | `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PROJECT_DIR}` are documented in Claude Code's Hooks Reference and are standard across current versions. If a future Claude Code release changes the names, the skill command is a one-line update — not worth preemptive shim infrastructure. The validation step (manual `/deep-harnessability` invocation from a non-plugin directory) catches this before merge. |
 | Symlink test is platform-specific (Windows) | Use `test('...', { skip: noSymlinkPriv ? 'reason' : false }, fn)` — the documented `node:test` option form. Probe `noSymlinkPriv` once at setup via a try/catch around a no-op `symlinkSync` attempt. |
 | Realpath containment rejects a legitimate in-directory symlink in an edge case (e.g., macOS `/private/var` vs `/var`) | Canonicalize both the scan dir and the target via `fs.realpathSync` before computing `path.relative`. This handles the macOS aliasing and any dirPath that is itself a symlink. |
 | Prefix-bypass bug reintroduced in future refactor | Dedicated regression test "symlink whose target sits in a SIBLING directory with a shared prefix" pins the correct behavior. |

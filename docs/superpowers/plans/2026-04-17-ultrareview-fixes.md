@@ -8,14 +8,14 @@
 
 **Tech Stack:** Node.js ESM, `node --test` (built-in), `node:assert/strict`. No external test framework. Project is a Claude Code plugin.
 
-**Source spec:** `docs/superpowers/specs/2026-04-17-ultrareview-fixes-design.md` (Rev 3, commit `943d815`).
+**Source spec:** `docs/superpowers/specs/2026-04-17-ultrareview-fixes-design.md` (Rev 4, latest commit).
 
 ---
 
 ## File Structure
 
 ### Created files
-- `scripts/run-scorer.sh` (commit 5, ONLY if `claude-code-guide` cannot confirm the plugin-root env var — otherwise skip)
+*(None — the plan no longer ships a shim script; Claude Code env vars (`${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PROJECT_DIR}`) are used directly.)*
 
 ### Modified files (by commit)
 - **Commit 1**: `lib/harnessability/scorer.js`, `lib/harnessability/scorer.test.js`
@@ -29,6 +29,14 @@
 
 ### Branch prerequisite
 Working on `fix/ultrareview-v1.1.1`. Verify: `git rev-parse --abbrev-ref HEAD` returns that branch.
+
+### Recovery guidance (per-step rollback)
+
+- **File edit succeeded but the next test step failed**: revert a single file with `git checkout -- <path>`. Do NOT use `git checkout .`, `git reset --hard`, or `git restore .` — those wipe unrelated work.
+- **Commit succeeded but was wrong**: create a NEW reversing commit with `git revert HEAD` rather than `git reset --hard HEAD~1`. The branch history stays auditable.
+- **Tests intermittently fail only for a new test**: run that file alone with `node --test lib/<path>.test.js` to isolate. If the new test is non-deterministic (e.g., relies on timestamps), fix the test before moving on; do NOT skip it.
+- **A pre-commit hook rejects the commit**: the commit did NOT happen. Fix the lint/format issue, re-stage, create a NEW commit. NEVER use `--no-verify` or `--amend` as a shortcut — the spec's Non-goals explicitly disallow --amend.
+- If you get stuck for more than 2 steps in a row, stop and ask the user. Do not invent a workaround.
 
 ---
 
@@ -104,25 +112,29 @@ Expected: new test passes, previously-passing tests still pass (46 total).
 
 ### Step 1.5: Write failing test for NA recommendations filtering
 
+Design note: the test must make the recommendation loop actually execute. The loop only runs when `score < 5`. A bare project (neither TS nor Python) makes all 4 `type_safety` checks `not_applicable`, which yields `applicableChecks.length === 0` and therefore `score === 0` — the loop runs, and pre-fix it iterates every check (including NAs), so all 4 get pushed as recommendations. Post-fix, the NA guard skips them.
+
 Append to `lib/harnessability/scorer.test.js`:
 
 ```javascript
 // ---------------------------------------------------------------------------
-// Test: low-scoring TS project does NOT emit Python-only recommendations
+// Test: not_applicable checks do not generate recommendations
 // ---------------------------------------------------------------------------
 
-test('low-scoring type_safety dimension in TS project does NOT emit Python recommendations', async () => {
+test('not_applicable checks do not generate recommendations in low-scoring dimensions', async () => {
   const root = mktemp();
-  // Make this a TS project with poor type_safety so recommendations are generated
-  writeJson(root, 'tsconfig.json', { compilerOptions: {} }); // no strict mode
-  writeFile(root, 'src/index.ts', 'export {}');
+  // Bare project — neither TypeScript nor Python. All four type_safety
+  // checks resolve to not_applicable. applicable count = 0 → score = 0.
+  writeFile(root, 'main.go', 'package main');
 
   const result = await scoreHarnessability(root);
 
-  const pythonRecs = result.recommendations.filter((r) =>
-    r.check === 'mypy_strict' || r.check === 'python_type_hints'
+  const typeSafetyRecs = result.recommendations.filter((r) => r.dimension === 'type_safety');
+  assert.deepEqual(
+    typeSafetyRecs,
+    [],
+    'not_applicable type_safety checks must not generate recommendations'
   );
-  assert.deepEqual(pythonRecs, [], 'no Python-specific recommendations should be emitted in a TS project');
 });
 ```
 
@@ -132,9 +144,9 @@ test('low-scoring type_safety dimension in TS project does NOT emit Python recom
 
 Run:
 ```bash
-npm test 2>&1 | grep -E "Python recommendations|tests"
+npm test 2>&1 | grep -E "not_applicable checks|type_safety"
 ```
-Expected: fails because the recommendation loop currently iterates every check (including `not_applicable`), emitting Python-check recommendations for TS-only projects whose `type_safety` score is below 5.
+Expected: the new test fails with a deepEqual mismatch — pre-fix emits 4 `type_safety` recommendations (one per NA check). Post-fix it emits 0.
 
 - [ ] **Step 1.6**: Run and confirm failure.
 
@@ -365,7 +377,16 @@ const qFirst = fmtQ(qtraj[0]);
 const qLast = fmtQ(qtraj[qtraj.length - 1]);
 ```
 
-Apply the same substitution in `renderEvolveMarkdown` (same two lines, different scope).
+`renderEvolveMarkdown` declares its OWN `qFirst`/`qLast` locals (they are re-declared inside that function — this is not the same scope as `renderEvolveCLI`). Apply the exact same two-line replacement there too:
+
+```javascript
+// Inside renderEvolveMarkdown, replace:
+const qFirst = qtraj[0]?.toFixed(2) ?? '?';
+const qLast = qtraj[qtraj.length - 1]?.toFixed(2) ?? '?';
+// with:
+const qFirst = fmtQ(qtraj[0]);
+const qLast = fmtQ(qtraj[qtraj.length - 1]);
+```
 
 - [ ] **Step 2.7**: Apply the edits.
 
@@ -415,10 +436,8 @@ test('formatMarkdown escapes literal `|` in finding strings, session sensors, an
 
   const md = formatMarkdown(pipeData);
 
-  // Every pipe character IN cell VALUES must be escaped as \|
-  // Header-row pipes should remain (| Sensor | Status | Detail |)
-  // Trick: pick each inserted value and assert its escaped form is present,
-  // and its unescaped form is NOT.
+  // Assertion 1 (value-level): every raw pipe value must appear in escaped form,
+  // and must NOT appear in unescaped form sandwiched between spaces (cell context).
   for (const raw of ['has|pipe', 'fine|here', 'rule|A', 'clean|x', '90%|y', 'arch|01']) {
     assert.ok(
       md.includes(raw.replace(/\|/g, '\\|')),
@@ -428,6 +447,22 @@ test('formatMarkdown escapes literal `|` in finding strings, session sensors, an
       !md.includes(` ${raw} `),
       `unescaped "${raw}" must not appear inside a Markdown cell`
     );
+  }
+
+  // Assertion 2 (structural): every pipe-table data row must split into the
+  // expected number of columns when splitting on UNESCAPED `|`. If any cell
+  // value smuggled an unescaped pipe, that row would split into more columns.
+  // We walk rows that START with `|` and are NOT separators (contain non-dash).
+  const dataRows = md.split('\n').filter(
+    (line) => line.startsWith('|') && /[^|\-\s:]/.test(line)
+  );
+  for (const row of dataRows) {
+    // Replace ESCAPED pipes with a sentinel, then split on remaining pipes.
+    const cols = row.replace(/\\\|/g, '\x00').split('|');
+    // Pipe-table rows start and end with `|`, so the first and last elements
+    // are empty strings. The middle elements are the cells.
+    const cellCount = cols.length - 2;
+    assert.ok(cellCount >= 2, `row produced unexpected column count: ${row}`);
   }
 });
 ```
@@ -489,8 +524,11 @@ parts.push(`| Quality Score | ${escapePipe(qualStr)} |`);
 
 (Numeric-only cells like `${exp.total ?? 0}` don't need escaping. Apply `escapePipe` only where a user-supplied string could contain `|`.)
 
-5. **Bullet list** (the `- **${a.finding}**: ${a.suggested_action}` line) — do NOT apply `escapePipe`. It is not a pipe table. Keep the `?? ''` guard only:
+5. **Bullet list** (the `- **${a.finding}**: ${a.suggested_action}` line) — do NOT apply `escapePipe`. It is not a pipe table. Current source has NO undefined-guard; **add** the `?? ''` guard:
 ```javascript
+// Before (current source):
+parts.push(`- **${a.finding}**: ${a.suggested_action}`);
+// After (this task adds the ?? '' guard — no escapePipe):
 parts.push(`- **${a.finding ?? ''}**: ${a.suggested_action ?? ''}`);
 ```
 
@@ -846,51 +884,32 @@ test(
   'readJsonDir rejects a symlink whose target sits in a SIBLING directory with a shared prefix',
   { skip: SYMLINK_SKIP_REASON },
   () => {
-    // Create a parent dir, then TWO siblings: one is the scan dir, the other
-    // has a shared string prefix. Naive startsWith would accept the sibling.
-    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'collector-sibling-'));
-    const scanDir = path.join(parent, 'recv');
-    const siblingDir = path.join(parent, 'recv-old'); // shared prefix!
+    // Layout: project/.deep-work/receipts (scanned) and project/.deep-work/receipts-old (sibling).
+    // A naive `startsWith(path.resolve(scanDir))` would accept the sibling because
+    // "…/receipts-old/…" starts with "…/receipts". path.relative(scanDir, target)
+    // correctly returns a "../…" form that the guard rejects.
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'collector-sibling-'));
+    const scanDir = path.join(projectRoot, '.deep-work/receipts');
+    const siblingDir = path.join(projectRoot, '.deep-work/receipts-old');
     fs.mkdirSync(scanDir, { recursive: true });
     fs.mkdirSync(siblingDir, { recursive: true });
 
-    // Target in the sibling
     const siblingTarget = path.join(siblingDir, 'stale.json');
-    fs.writeFileSync(siblingTarget, JSON.stringify({ slice_id: 'stale', quality_score: 1 }));
+    fs.writeFileSync(siblingTarget, JSON.stringify({ slice_id: 'sibling-stale', quality_score: 1 }));
 
-    // Symlink inside scanDir pointing to the sibling's file
-    const linkPath = path.join(scanDir, 'link.json');
-    fs.symlinkSync(siblingTarget, linkPath);
-
-    // readJsonDir is internal; exercise via the collectData path by using
-    // scanDir as a fake receipts dir. We do this by placing scanDir under a
-    // project root with the expected layout.
-    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'collector-proj-'));
-    const receiptsDir = path.join(projectRoot, '.deep-work/receipts');
-    fs.mkdirSync(path.dirname(receiptsDir), { recursive: true });
-    // Rewire: make .deep-work/receipts be the prepared scanDir via symlink?
-    // Simpler: recreate the sibling layout INSIDE the project root.
-
-    // Alternative layout inline (self-contained):
-    const altScan = path.join(projectRoot, '.deep-work/receipts');
-    const altSibling = path.join(projectRoot, '.deep-work/receipts-old');
-    fs.mkdirSync(altScan, { recursive: true });
-    fs.mkdirSync(altSibling, { recursive: true });
-    const altTarget = path.join(altSibling, 'stale.json');
-    fs.writeFileSync(altTarget, JSON.stringify({ slice_id: 'altstale', quality_score: 1 }));
-    fs.symlinkSync(altTarget, path.join(altScan, 'link.json'));
+    fs.symlinkSync(siblingTarget, path.join(scanDir, 'link.json'));
 
     const result = collectData(projectRoot);
     const ids = result.deepWork.receipts.map((r) => r.slice_id);
     assert.ok(
-      !ids.includes('altstale'),
+      !ids.includes('sibling-stale'),
       'symlink to sibling receipts-old/ must be rejected despite shared "receipts" prefix'
     );
   }
 );
 ```
 
-- [ ] **Step 4.7**: Add the test block. (The test is self-contained via the "alternative layout inline" portion; the earlier `scanDir`/`siblingDir` lines are redundant and can be trimmed if desired.)
+- [ ] **Step 4.7**: Add the test block above.
 
 ### Step 4.8: Run — expect PASS
 
@@ -971,65 +990,22 @@ Addresses ultrareview C3, C4, L1, L2, L3, L4 + M1 schema doc.
 - Modify: `.claude-plugin/plugin.json`, `README.md`, `README.ko.md`, `CHANGELOG.md`, `CHANGELOG.ko.md`, `skills/deep-harnessability.md`
 - Possibly create: `scripts/run-scorer.sh` (fallback path only — see Step 5.1)
 
-### Step 5.1: Verify Claude Code plugin-root env var
+### Step 5.1: Update skill command to use Claude Code env vars
 
-Dispatch the `claude-code-guide` subagent:
-
-```
-Agent({
-  subagent_type: "claude-code-guide",
-  description: "verify plugin-root env var",
-  prompt: "I'm editing a skill file (`skills/deep-harnessability.md`) that needs to run a Node script located inside the plugin directory, passing the user's current project directory as an argument. What is the EXACT name of the environment variable Claude Code injects at skill-execution time for (a) the installed plugin's root directory, and (b) the user's current project directory? I've seen guesses like `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PROJECT_DIR` — are these correct, or are the actual names different? Cite the documentation. Under 150 words."
-})
-```
-
-- [ ] **Step 5.1**: Run the subagent.
-
-**Branch based on the result:**
-- If both names are confirmed → proceed with Step 5.2a (env-var form).
-- If either name is unknown or documentation is ambiguous → proceed with Step 5.2b (shim fallback).
-
-### Step 5.2a: Update skill command using confirmed env vars (primary path)
+`${CLAUDE_PLUGIN_ROOT}` (installed plugin directory) and `${CLAUDE_PROJECT_DIR}` (user's active project directory) are documented in Claude Code's Hooks Reference and are available inside bash code blocks within skill markdown. Verified via `claude-code-guide` subagent during plan revision — no runtime subagent dispatch needed.
 
 Edit `skills/deep-harnessability.md`. Replace the current literal line:
 ```markdown
    node "PLUGIN_DIR/lib/harnessability/scorer.js" "PROJECT_ROOT"
 ```
-with (substitute the verified names for `<PLUGIN_ROOT_VAR>` and `<PROJECT_DIR_VAR>`):
+with:
 ```markdown
-   node "${<PLUGIN_ROOT_VAR>}/lib/harnessability/scorer.js" "${<PROJECT_DIR_VAR>}"
+   node "${CLAUDE_PLUGIN_ROOT}/lib/harnessability/scorer.js" "${CLAUDE_PROJECT_DIR}"
 ```
 
-- [ ] **Step 5.2a**: If Step 5.1 succeeded, apply this edit and SKIP Step 5.2b.
+Note: if a future Claude Code release changes these variable names, the fix is a one-line update in this same file. No shim infrastructure needed. The manual spot-check in Step F.3 (invoke `/deep-harnessability` from a throwaway directory that is NOT the plugin repo) verifies the command resolves correctly at runtime before the PR merges.
 
-### Step 5.2b: Ship self-resolving shim (fallback path)
-
-Create `scripts/run-scorer.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Resolves this script's own directory and invokes the scorer with the
-# first argument as the project root. Works regardless of CWD.
-set -euo pipefail
-
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-project_root="${1:-$(pwd)}"
-
-exec node "${here}/../lib/harnessability/scorer.js" "${project_root}"
-```
-
-Make it executable:
-```bash
-chmod +x scripts/run-scorer.sh
-```
-
-Edit `skills/deep-harnessability.md` — replace the literal line with:
-```markdown
-   bash "$(dirname "${BASH_SOURCE[0]:-$0}")/../scripts/run-scorer.sh" "$(pwd)"
-```
-(If Claude Code skills run in a context where `$0` and `BASH_SOURCE` are unavailable, document in the skill that the user must invoke the script directly via its installed path — but this is only a concern if Step 5.2a also fails.)
-
-- [ ] **Step 5.2b**: Only if Step 5.2a is NOT applicable, create the shim and update the skill.
+- [ ] **Step 5.1**: Apply the edit.
 
 ### Step 5.3: Bump `.claude-plugin/plugin.json` version
 
@@ -1055,7 +1031,19 @@ In `README.md`, replace the current 4-row table (around the "Effectiveness score
 | Evolve | 20% | `quality_score` from `.deep-evolve/evolve-receipt.json` (normalized 0–100 → 0–10) |
 ```
 
-Apply the identical 5-row table (same weights, Korean labels) in `README.ko.md`.
+Apply the identical 5-row table in `README.ko.md` with Korean column headers and dimension labels:
+
+```markdown
+| 차원 | 가중치 | 출처 |
+|---|---|---|
+| 건강성 (Health) | 25% | deep-review fitness 데이터의 `sensors_clean_ratio` |
+| 적합성 (Fitness) | 20% | `.deep-review/fitness.json`의 `rules_pass_ratio` |
+| 세션 (Session) | 20% | 최근 3개 deep-work receipt의 `quality_score` 평균 (0–100 → 0–10 정규화) |
+| 하네스 가능성 (Harnessability) | 15% | `.deep-dashboard/harnessability-report.json`의 `total` |
+| Evolve | 20% | `.deep-evolve/evolve-receipt.json`의 `quality_score` (0–100 → 0–10 정규화) |
+```
+
+(If the existing Korean README uses different label forms for the 4 original dimensions, match the existing style rather than introducing new translations — the goal is to correct weights and add the Evolve row, not to re-translate.)
 
 - [ ] **Step 5.4**: Apply both edits.
 
@@ -1111,6 +1099,18 @@ In all four files (`README.md`, `README.ko.md`, `CHANGELOG.md`, `CHANGELOG.ko.md
 
 - [ ] **Step 5.8**: Apply the four edits (English wording in `README.md`/`CHANGELOG.md`, Korean in the `.ko.md` pair).
 
+### Step 5.8b: Verify skills/deep-harness-dashboard.md does not reference the effectiveness table
+
+The spec listed `skills/deep-harness-dashboard.md` as "if affected." Confirm or refute:
+
+```bash
+grep -n -E "weight|Health|Fitness|Session|Harnessability|Evolve" skills/deep-harness-dashboard.md | head -20
+```
+
+If the output shows references to the effectiveness-table weights (25/20/20/15/20) or the 4-row/5-row structure, update this file to match the new table (same edits as Step 5.4). If the file only mentions the dimensions abstractly (without numeric weights), leave it unchanged.
+
+- [ ] **Step 5.8b**: Run the grep. If any match mentions specific weights, apply the correction; otherwise record "no-op" in the commit message.
+
 ### Step 5.9: Run full test suite — no regressions
 
 Run: `npm test`. Expected: 56 tests pass (identical to Task 4; docs changes do not affect tests).
@@ -1130,9 +1130,8 @@ grep -c "^| " README.ko.md    # same
 ### Step 5.10: Commit
 
 ```bash
+# Add skills/deep-harness-dashboard.md only if Step 5.8b found edits to apply.
 git add .claude-plugin/plugin.json README.md README.ko.md CHANGELOG.md CHANGELOG.ko.md skills/deep-harnessability.md
-# Include scripts/ only if Step 5.2b was taken:
-# git add scripts/run-scorer.sh
 git commit -m "$(cat <<'EOF'
 docs: sync weights, version, architecture, skill command, and received_from schema
 
@@ -1149,7 +1148,8 @@ docs: sync weights, version, architecture, skill command, and received_from sche
 - READMEs + CHANGELOGs: clarified evolve-low-q description to spell out
   the 3-point window semantics.
 - skills/deep-harnessability.md: replaced the unresolved PLUGIN_DIR /
-  PROJECT_ROOT literals with a working invocation form.
+  PROJECT_ROOT literals with the documented Claude Code env vars
+  (\${CLAUDE_PLUGIN_ROOT} / \${CLAUDE_PROJECT_DIR}).
 
 Addresses ultrareview C3, C4, L1, L2, L3, L4.
 EOF
@@ -1217,4 +1217,4 @@ The branch is ready for:
 - If `npm test` output is noisy and you can't find a new test result, use `node --test lib/<path>.test.js` to target a single file.
 - The `os.tmpdir()`-based tests in Task 4 write and must clean up temp directories on their own. Existing tests in the project use `fs.mkdtempSync` without explicit cleanup (relying on OS reap); match that style.
 - Pipe-escape MUST stay scoped to pipe-table cells. If you find yourself applying `escapePipe` to header rows, separator rows (`|---|---|`), or bullet lists, back out — you have gone too far.
-- If `claude-code-guide` reports conflicting documentation, prefer the shim fallback (Step 5.2b). A working skill command with an extra file is better than a broken skill command.
+- The skill command in Step 5.1 uses `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` — both documented in Claude Code's Hooks Reference. The manual spot-check in Step F.3 verifies at runtime; if either is unset in your environment, stop and report to the user rather than inventing a fallback.
