@@ -11,7 +11,7 @@ Assess how "harness-able" this codebase is. All measurements are computational â
 
 1. Run the scorer:
    ```bash
-   node "PLUGIN_DIR/lib/harnessability/scorer.js" "PROJECT_ROOT"
+   node "${CLAUDE_PLUGIN_ROOT}/lib/harnessability/scorer.js" "${CLAUDE_PROJECT_DIR}"
    ```
    This outputs JSON with the score, grade, dimensions, and recommendations.
    It also saves the result to `.deep-dashboard/harnessability-report.json`.

@@ -9,7 +9,7 @@
   - `collectDeepEvolve()` in collector for evolve-receipt.json consumption
   - `evolve` dimension (weight 0.20) in effectiveness scorer with weight redistribution
   - `extractEvolveFindings()` with 5 detection rules (low-keep, high-crash, low-q, stale, no-transfer)
-  - Q(v) decline detection with 0.05 noise threshold
+  - `evolve-low-q`: fires when the earliest of the last-3 `q_trajectory` values is more than 0.05 above the most recent value (i.e., the recent 3-point window is trending down).
   - Evolve section in CLI and Markdown formatter output
   - `action-router.test.js` (new test file)
   - Contract test fixtures for cross-plugin schema validation

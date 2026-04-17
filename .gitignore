@@ -1,2 +1,54 @@
+# Dependencies
 node_modules/
+
+# OS junk
 .DS_Store
+Thumbs.db
+ehthumbs.db
+.Spotlight-V100
+.Trashes
+
+# Editor / IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# Build / test outputs
+dist/
+build/
+coverage/
+.nyc_output/
+*.log
+npm-debug.log*
+yarn-error.log
+tsconfig.tsbuildinfo
+
+# Environment files (commit .env.example explicitly if you add one)
+.env
+.env.*
+!.env.example
+
+# Claude Code — user-local session state (not the plugin manifest)
+.claude/
+
+# Serena MCP — project memory / config
+.serena/
+
+# deep-suite runtime artifacts (generated when plugins run locally,
+# including this plugin against itself)
+.deep-work/
+.deep-docs/
+.deep-evolve/
+.deep-dashboard/
+
+# deep-review — runtime state and local review outputs
+.deep-review/config.yaml
+.deep-review/reports/
+.deep-review/responses/
+.deep-review/entropy-log.jsonl
+.deep-review/recurring-findings.json
+
+# Development docs (specs, plans, backlog) — local-only, not for remote
+docs/
