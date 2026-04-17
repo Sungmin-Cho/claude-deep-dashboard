@@ -70,7 +70,7 @@ Each dimension scores 0–10 based on the fraction of its checks that pass. Ecos
 
 The report is saved to `.deep-dashboard/harnessability-report.json` and is consumed by:
 - **deep-work** Phase 1 Research (when the file is present and less than 24 hours old)
-- `/deep-harness-dashboard` (as one of its four effectiveness inputs)
+- `/deep-harness-dashboard` (as one of its five effectiveness inputs)
 
 **Recommendations**
 
@@ -95,14 +95,15 @@ The collector reads defensively — missing files return `null` rather than thro
 
 **Effectiveness score**
 
-A single 0–10 effectiveness score is calculated from four weighted dimensions:
+A single 0–10 effectiveness score is calculated from five weighted dimensions:
 
 | Dimension | Weight | Source |
 |---|---|---|
-| Health | 30% | `sensors_clean_ratio` from deep-review fitness data |
-| Fitness | 25% | `rules_pass_ratio` from `.deep-review/fitness.json` |
-| Session | 25% | Average `quality_score` of the last 3 deep-work receipts (normalized 0–100 → 0–10) |
-| Harnessability | 20% | `total` from `.deep-dashboard/harnessability-report.json` |
+| Health | 25% | `sensors_clean_ratio` from deep-review fitness data |
+| Fitness | 20% | `rules_pass_ratio` from `.deep-review/fitness.json` |
+| Session | 20% | Average `quality_score` of the last 3 deep-work receipts (normalized 0–100 → 0–10) |
+| Harnessability | 15% | `total` from `.deep-dashboard/harnessability-report.json` |
+| Evolve | 20% | `quality_score` from `.deep-evolve/evolve-receipt.json` (normalized 0–100 → 0–10) |
 
 If a dimension has no data, its weight is redistributed proportionally to the available dimensions. When no data is available at all, the effectiveness score is `N/A`.
 
@@ -132,12 +133,15 @@ Findings from fitness rules, review receipts, and docs staleness checks are mapp
 - **Data Source**: `.deep-evolve/evolve-receipt.json`
 - **Effectiveness Dimension**: `evolve` (weight 0.20) — normalized from `quality_score` (0-100 → 0-10)
 - **Detection Rules** (5):
-  - `evolve-low-keep`: keep rate < 15% → strategy refinement 권장
-  - `evolve-high-crash`: crash rate > 20% → eval harness 점검
-  - `evolve-low-q`: Q(v) trajectory 하락 (delta > 0.05) → strategy 검토
-  - `evolve-stale`: receipt 30일 이상 경과 → 추가 실험 권장
-  - `evolve-no-transfer`: 전이 학습 미활용 → meta-archive 구축 권장
-- **Formatter**: CLI 및 Markdown 출력에 Evolve 섹션 표시 (discarded 세션은 별도 표시)
+  - `evolve-low-keep`: keep rate < 15% → strategy refinement recommended
+  - `evolve-high-crash`: crash rate > 20% → eval harness inspection
+  - `evolve-low-q`: fires when the earliest of the last-3 `q_trajectory` values is more than 0.05 above the most recent value (i.e., the recent 3-point window is trending down) → strategy review
+  - `evolve-stale`: receipt older than 30 days → further experiments recommended
+  - `evolve-no-transfer`: transfer learning unused → meta-archive buildup recommended
+- **Formatter**: Evolve section rendered in CLI and Markdown output (discarded sessions are shown separately)
+
+**Schema notes**
+- `transfer.received_from`: `non-empty string | null`. Empty strings and numeric sentinels are not part of the schema; `null` means no transfer learning was received.
 
 ---
 
@@ -214,11 +218,13 @@ Example CLI output:
 deep-dashboard is a **read-only consumer** of the deep-suite ecosystem. It never writes to another plugin's output directory.
 
 ```
-deep-work  ──┐
+deep-work   ──┐
+              │
+deep-review ──┤
               ├──► deep-dashboard (collector → effectiveness → formatter)
-deep-review ──┤         │
+deep-docs   ──┤         │
               │         └──► .deep-dashboard/harnessability-report.json
-deep-docs  ──┘
+deep-evolve ──┘
 ```
 
 The harnessability scorer writes only to `.deep-dashboard/` within the target project. All other reads are from the owning plugin's output directories (`.deep-work/`, `.deep-review/`, `.deep-docs/`).
