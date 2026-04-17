@@ -7,3 +7,6 @@ node_modules/
 .deep-review/responses/
 .deep-review/entropy-log.jsonl
 .deep-review/recurring-findings.json
+
+# Development docs (specs, plans, backlog) — local-only, not for remote
+docs/
