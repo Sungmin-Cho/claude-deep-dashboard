@@ -1,2 +1,9 @@
 node_modules/
 .DS_Store
+
+# deep-review — runtime state and local review outputs
+.deep-review/config.yaml
+.deep-review/reports/
+.deep-review/responses/
+.deep-review/entropy-log.jsonl
+.deep-review/recurring-findings.json
