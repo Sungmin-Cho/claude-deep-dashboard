@@ -2,6 +2,27 @@
 
 # Changelog
 
+## [1.2.0] — 2026-05-07
+
+### Changed
+- **`.deep-dashboard/harnessability-report.json` now wraps in the claude-deep-suite M3 cross-plugin envelope** (`docs/envelope-migration.md`). Top-level `schema_version: "1.0"` + `envelope` block (`producer = "deep-dashboard"`, `producer_version`, `artifact_kind = "harnessability-report"`, `run_id` ULID, `generated_at` RFC 3339, `schema { name, version }`, `git { head, branch, dirty }`, `provenance { source_artifacts, tool_versions }`) + `payload` (`total`, `grade`, `dimensions`, `recommendations`, `topology`, `topology_hints`, `projectRoot`).
+- **`scorer.js` CLI** prints the envelope JSON on stdout (was: the unwrapped result). Disk file matches stdout. Domain data lives at `.payload.*` — adjust any inline consumers accordingly.
+- **`scorer.js` `saveReport()`** return shape changed from `string` (path) to `{ path, envelope }` so callers can forward the envelope without re-reading the file.
+- **`collector.js` is now M3 envelope-aware**. For each artifact it consumes, it detects the envelope wrapper (strict `schema_version === "1.0"` + `envelope` + `payload` triple), enforces identity guards (producer / artifact_kind / schema.name), and unwraps the inner `payload` for downstream consumers (effectiveness scorer, formatter). Identity-mismatched envelopes resolve to `null` with a stderr warning (defense-in-depth — handoff §4 round-4 lesson).
+- Envelope-aware paths: `.deep-docs/last-scan.json`, `.deep-dashboard/harnessability-report.json`, `.deep-work/session-receipt.json`, `.deep-work/receipts/*.json`, `.deep-evolve/evolve-receipt.json`. `.deep-review/fitness.json` and `.deep-review/receipts/*.json` remain legacy reads — deep-review's M3 artifact is `recurring-findings.json`, which the dashboard does not currently consume.
+
+### Added
+- `scripts/validate-envelope-emit.js` — zero-dep envelope contract self-test mirroring suite spec (`additionalProperties: false`, ULID/SemVer 2.0.0 strict / kebab-case / RFC 3339 regex, identity check, payload shape minimal).
+- `tests/fixtures/sample-harnessability-report.json` — envelope-wrapped sample emit (also serves as the Phase 3 input for `claude-deep-suite/schemas/payload-registry/deep-dashboard/harnessability-report/v1.0.schema.json` placeholder → authoritative replacement).
+- `npm run validate:envelope` script (zero-dep node).
+- 11 new collector tests covering envelope unwrap (deep-docs, self, deep-work session/slice, deep-evolve), identity-guard rejection (wrong producer, wrong kind, schema.name drift), legacy pass-through (mixed pre/post-envelope coexistence, numeric `schema_version: 2`).
+
+### Migration notes
+- Internal **breaking change** to `harnessability-report.json` shape. External readers that parsed `report.total` directly (instead of `report.payload.total`) must migrate. The 24-hour-stale rule from `skills/deep-harnessability.md` provides natural invalidation — old readers will simply re-run.
+- Known cross-plugin consumer: `deep-work` Phase 1 Research consumes `harnessability-report.json` (handoff §3.3 chain). Its envelope-aware read will land in deep-work's Phase 2 PR (priority #3).
+- Per claude-deep-suite handoff §1: this PR modifies plugin repo only. `marketplace.json` SHA bump and `payload-registry/deep-dashboard/harnessability-report/v1.0.schema.json` placeholder → authoritative replacement land in suite repo's Phase 3 batch PR.
+- claude-deep-suite Phase 2 Adoption ledger (`docs/envelope-migration.md` §6.1) priority #2.
+
 ## [1.1.1] — 2026-04-17
 
 Patch release addressing defects surfaced by the 2026-04-17 ultrareview of v1.1.0 and follow-up polish.

@@ -2,6 +2,27 @@
 
 # 변경 이력
 
+## [1.2.0] — 2026-05-07
+
+### 변경
+- **`.deep-dashboard/harnessability-report.json` 이제 claude-deep-suite M3 cross-plugin envelope 으로 wrap** (`docs/envelope-migration.md`). top-level `schema_version: "1.0"` + `envelope` 블록 (`producer = "deep-dashboard"`, `producer_version`, `artifact_kind = "harnessability-report"`, `run_id` ULID, `generated_at` RFC 3339, `schema { name, version }`, `git { head, branch, dirty }`, `provenance { source_artifacts, tool_versions }`) + `payload` (`total`, `grade`, `dimensions`, `recommendations`, `topology`, `topology_hints`, `projectRoot`).
+- **`scorer.js` CLI** stdout 으로 envelope JSON 출력 (이전: unwrapped 결과). 디스크 파일도 동일 envelope 모양. domain data 는 `.payload.*` 위치 — inline consumer 가 있다면 그에 맞춰 갱신 필요.
+- **`scorer.js` `saveReport()`** 반환 형식 변경: `string` (path) → `{ path, envelope }`. 호출자가 파일을 다시 읽지 않고도 envelope 을 다음 단계로 전달할 수 있음.
+- **`collector.js` 가 M3 envelope-aware 로 전환**. 각 artifact 경로에서 envelope 래퍼를 감지(strict `schema_version === "1.0"` + `envelope` + `payload` triple)하고, identity 가드 (producer / artifact_kind / schema.name)를 강제한 뒤 `payload` 만 downstream consumer (effectiveness scorer, formatter)에 노출. identity 불일치 envelope 은 stderr 경고와 함께 `null` 처리 (defense-in-depth — handoff §4 round-4 학습).
+- envelope-aware 경로: `.deep-docs/last-scan.json`, `.deep-dashboard/harnessability-report.json`, `.deep-work/session-receipt.json`, `.deep-work/receipts/*.json`, `.deep-evolve/evolve-receipt.json`. `.deep-review/fitness.json` 와 `.deep-review/receipts/*.json` 는 legacy read 유지 — deep-review 의 M3 artifact 는 `recurring-findings.json` 이며 dashboard 는 현재 그것을 소비하지 않음.
+
+### 추가
+- `scripts/validate-envelope-emit.js` — zero-dep envelope contract self-test (suite spec mirror: `additionalProperties: false`, ULID/SemVer 2.0.0 strict / kebab-case / RFC 3339 정규식, identity check, payload shape minimal).
+- `tests/fixtures/sample-harnessability-report.json` — envelope-wrapped sample emit (Phase 3 의 `claude-deep-suite/schemas/payload-registry/deep-dashboard/harnessability-report/v1.0.schema.json` placeholder → authoritative 교체 input).
+- `npm run validate:envelope` 스크립트 (zero-dep node).
+- collector 신규 테스트 11개 — envelope unwrap (deep-docs, self, deep-work session/slice, deep-evolve), identity-guard 거부 (잘못된 producer, kind, schema.name drift), legacy pass-through (envelope/legacy 혼재, `schema_version: 2` numeric).
+
+### 마이그레이션 노트
+- 본 릴리스는 `harnessability-report.json` shape **breaking change** (plugin-internal). `report.payload.total` 대신 `report.total` 을 직접 읽던 외부 reader 는 envelope-aware 로 갱신 필요. `skills/deep-harnessability.md` 의 24시간 staleness 규칙으로 자연 invalidation.
+- 알려진 cross-plugin consumer: `deep-work` Phase 1 Research 가 `harnessability-report.json` 을 소비 (handoff §3.3 chain). envelope-aware read 갱신은 deep-work 의 Phase 2 PR (priority #3) 에서 처리.
+- claude-deep-suite handoff §1 정책에 따라 본 PR 은 plugin repo 만 변경. `marketplace.json` SHA bump 와 `payload-registry/deep-dashboard/harnessability-report/v1.0.schema.json` placeholder → authoritative 교체는 suite repo Phase 3 batch PR 에서.
+- claude-deep-suite Phase 2 Adoption ledger (`docs/envelope-migration.md` §6.1) priority #2 항목.
+
 ## [1.1.1] — 2026-04-17
 
 2026-04-17 ultrareview에서 드러난 v1.1.0의 결함 및 후속 polish를 해결한 패치 릴리스.

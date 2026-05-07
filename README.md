@@ -68,9 +68,15 @@ Each dimension scores 0–10 based on the fraction of its checks that pass. Ecos
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-The report is saved to `.deep-dashboard/harnessability-report.json` and is consumed by:
-- **deep-work** Phase 1 Research (when the file is present and less than 24 hours old)
-- `/deep-harness-dashboard` (as one of its five effectiveness inputs)
+The report is saved to `.deep-dashboard/harnessability-report.json` wrapped in
+the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)
+(`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at
+`.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). Envelope
+identity: `(producer=deep-dashboard, artifact_kind=harnessability-report, schema.name=harnessability-report)`.
+
+The report is consumed by:
+- **deep-work** Phase 1 Research (when the file is present and less than 24 hours old) — envelope-aware
+- `/deep-harness-dashboard` (as one of its five effectiveness inputs) — envelope-aware via collector unwrap
 
 **Recommendations**
 
@@ -92,6 +98,19 @@ Aggregates data from all installed v1 plugins into a single terminal view or mar
 | deep-dashboard | Harnessability report | `.deep-dashboard/harnessability-report.json` |
 
 The collector reads defensively — missing files return `null` rather than throwing.
+
+The collector is **M3 envelope-aware**. For each artifact source, it detects
+the [claude-deep-suite cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)
+(`schema_version === "1.0"` + `envelope` block + `payload`), enforces identity
+guards on `producer` / `artifact_kind` / `schema.name`, and exposes the
+unwrapped `payload` to the effectiveness scorer and formatter. Legacy
+(un-wrapped) artifacts pass through unchanged. Identity-mismatched envelopes
+resolve to `null` with a stderr warning (defense-in-depth). Envelope-aware
+sources: `last-scan.json`, `harnessability-report.json` (self),
+`session-receipt.json`, `receipts/SLICE-*.json`, `evolve-receipt.json`.
+`.deep-review/fitness.json` and `.deep-review/receipts/*.json` remain legacy
+reads — `recurring-findings.json` is deep-review's M3 artifact, which the
+dashboard does not currently consume.
 
 **Effectiveness score**
 
