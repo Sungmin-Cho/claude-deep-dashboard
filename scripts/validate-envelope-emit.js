@@ -203,6 +203,14 @@ function check(target) {
   if (!Array.isArray(pl.dimensions)) {
     fail('payload.dimensions must be an array');
   } else {
+    // Mirror the producer-side invariant (lib/harnessability/scorer.js + checklist.json):
+    // exactly 6 dimensions are emitted (type_safety / module_boundaries / test_infra /
+    // sensor_readiness / linter_formatter / ci_cd). The validator is the only zero-dep
+    // contract maintainers run against arbitrary fixtures, so without this length check
+    // a malformed emit (e.g., dimensions: []) would silent-pass.
+    if (pl.dimensions.length !== 6) {
+      fail(`payload.dimensions must have exactly 6 entries (got ${pl.dimensions.length})`);
+    }
     pl.dimensions.forEach((d, idx) => {
       if (!d || typeof d !== 'object' || Array.isArray(d)) {
         fail(`payload.dimensions[${idx}] must be a non-null, non-array object`);
