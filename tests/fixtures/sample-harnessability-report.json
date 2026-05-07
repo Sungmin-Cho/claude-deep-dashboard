@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Sungmin-Cho/claude-deep-suite/main/schemas/artifact-envelope.schema.json",
+  "schema_version": "1.0",
+  "envelope": {
+    "producer": "deep-dashboard",
+    "producer_version": "1.2.0",
+    "artifact_kind": "harnessability-report",
+    "run_id": "01KR0J9PEM6E3K8H7XW2QFNB4M",
+    "generated_at": "2026-05-07T10:00:00Z",
+    "schema": { "name": "harnessability-report", "version": "1.0" },
+    "git": {
+      "head": "0123456789abcdef0123456789abcdef01234567",
+      "branch": "feat/m3-envelope-adoption",
+      "dirty": false
+    },
+    "provenance": {
+      "source_artifacts": [
+        { "path": "/path/to/project" }
+      ],
+      "tool_versions": {
+        "node": "v20.11.0"
+      }
+    }
+  },
+  "payload": {
+    "projectRoot": "/path/to/project",
+    "total": 7.4,
+    "grade": "Good",
+    "dimensions": [
+      {
+        "id": "type_safety",
+        "label": "Type Safety",
+        "weight": 0.25,
+        "score": 10,
+        "checks": [
+          { "id": "tsconfig_exists", "label": "tsconfig.json present", "passed": true },
+          { "id": "tsconfig_strict", "label": "strict mode enabled", "passed": true }
+        ]
+      },
+      {
+        "id": "module_boundaries",
+        "label": "Module Boundaries",
+        "weight": 0.20,
+        "score": 6.7,
+        "checks": [
+          { "id": "depcruiser_config", "label": ".dependency-cruiser config present", "passed": false },
+          { "id": "src_dir_exists", "label": "src/ or lib/ directory exists", "passed": true },
+          { "id": "index_files", "label": "index.* files present", "passed": true }
+        ]
+      },
+      {
+        "id": "test_infra",
+        "label": "Test Infrastructure",
+        "weight": 0.20,
+        "score": 6.7,
+        "checks": [
+          { "id": "test_framework", "label": "test framework declared", "passed": true },
+          { "id": "test_files_exist", "label": ".test/.spec files present", "passed": true },
+          { "id": "coverage_config", "label": "coverage config present", "passed": false }
+        ]
+      },
+      {
+        "id": "sensor_readiness",
+        "label": "Sensor Readiness",
+        "weight": 0.15,
+        "score": 6.7,
+        "checks": [
+          { "id": "linter_config", "label": "linter config present", "passed": true },
+          { "id": "typecheck_available", "label": "typechecker available", "passed": true },
+          { "id": "lock_file", "label": "lock file present", "passed": false }
+        ]
+      },
+      {
+        "id": "linter_formatter",
+        "label": "Linter & Formatter",
+        "weight": 0.10,
+        "score": 5,
+        "checks": [
+          { "id": "linter_config_file", "label": "linter config file", "passed": true },
+          { "id": "formatter_config", "label": "formatter config", "passed": false }
+        ]
+      },
+      {
+        "id": "ci_cd",
+        "label": "CI/CD",
+        "weight": 0.10,
+        "score": 5,
+        "checks": [
+          { "id": "ci_config_exists", "label": "CI config present", "passed": true },
+          { "id": "ci_runs_tests", "label": "CI runs tests", "passed": false }
+        ]
+      }
+    ],
+    "recommendations": [
+      { "dimension": "linter_formatter", "check": "formatter_config", "action": "formatter config" }
+    ],
+    "topology": null,
+    "topology_hints": null
+  }
+}

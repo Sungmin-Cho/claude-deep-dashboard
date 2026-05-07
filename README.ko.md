@@ -68,9 +68,16 @@ claude plugin install @deep-suite/deep-dashboard
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-보고서는 `.deep-dashboard/harnessability-report.json`에 저장되며 다음에서 사용됩니다:
-- **deep-work** Phase 1 Research (파일이 존재하고 24시간 이내인 경우)
-- `/deep-harness-dashboard` (5개 효과성 입력 중 하나로)
+보고서는 `.deep-dashboard/harnessability-report.json` 에 [claude-deep-suite M3
+cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)
+형식으로 저장됩니다 (`schema_version: "1.0"` + `envelope` 블록 + `payload`).
+domain data 는 `.payload.*` 위치 (`total`, `grade`, `dimensions`,
+`recommendations`). envelope identity:
+`(producer=deep-dashboard, artifact_kind=harnessability-report, schema.name=harnessability-report)`.
+
+다음에서 사용됩니다:
+- **deep-work** Phase 1 Research (파일이 존재하고 24시간 이내인 경우) — envelope-aware
+- `/deep-harness-dashboard` (5개 효과성 입력 중 하나로) — collector unwrap 을 통해 envelope-aware
 
 **권장 사항**
 
@@ -91,7 +98,19 @@ claude plugin install @deep-suite/deep-dashboard
 | deep-docs | 마지막 문서 스캔 | `.deep-docs/last-scan.json` |
 | deep-dashboard | Harnessability 보고서 | `.deep-dashboard/harnessability-report.json` |
 
-Collector는 방어적으로 읽습니다 — 파일이 없으면 예외를 던지지 않고 `null`을 반환합니다.
+Collector 는 방어적으로 읽습니다 — 파일이 없으면 예외를 던지지 않고 `null` 을 반환합니다.
+
+Collector 는 **M3 envelope-aware** 입니다. 각 artifact 소스에 대해
+[claude-deep-suite cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)
+(`schema_version === "1.0"` + `envelope` 블록 + `payload`)을 감지하고,
+identity 가드 (`producer` / `artifact_kind` / `schema.name`)를 강제한 뒤,
+unwrap 된 `payload` 만 effectiveness scorer 와 formatter 에 노출합니다.
+legacy (un-wrapped) artifact 는 그대로 통과. identity 불일치 envelope 은
+stderr 경고와 함께 `null` 처리 (defense-in-depth). envelope-aware 소스:
+`last-scan.json`, `harnessability-report.json` (self), `session-receipt.json`,
+`receipts/SLICE-*.json`, `evolve-receipt.json`. `.deep-review/fitness.json`
+와 `.deep-review/receipts/*.json` 는 legacy read 유지 — `recurring-findings.json`
+이 deep-review 의 M3 artifact 이며 dashboard 는 그것을 현재 소비하지 않습니다.
 
 **효과성 점수**
 
