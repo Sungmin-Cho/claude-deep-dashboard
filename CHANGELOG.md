@@ -87,6 +87,44 @@ rejection (W2 negative), receiver-produced child counting (W2 positive),
 missing payload.to defensive path, and 2 W3 symmetric tests for
 empty-source filtering on handoff + compaction).
 
+### Round 3 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+- **C3 (Codex adversarial HIGH)** Reverse handoff inflated denominator.
+  Per `long-run-handoff.md` §7, a reverse handoff (handoff whose
+  `parent_run_id` chains to another handoff's `run_id`) IS the receiver's
+  success signal for the upstream handoff — NOT a fresh initiating
+  handoff requiring its own child. Round-2 counted ALL handoffs in the
+  denominator, capping the canonical happy path (forward + reverse) at
+  50% — materially misleading for an operator dashboard.
+  Fix: denominator = INITIATING handoffs only (parent_run_id absent OR
+  not chaining to another handoff's run_id). `source_summary` now exposes
+  `handoffs_continuation` for drill-down. The canonical happy path now
+  correctly reports 1.0.
+- **W4 (Codex review P2)** `dir+session-glob` merge concatenated flat +
+  per-session entries without dedup by `run_id`. A producer writing the
+  same envelope to both layouts (transitional period, accidental
+  double-write) would inflate `compaction.frequency`, the `roundtrip`
+  denominator, and the `chains` index.
+  Fix: dedup by `envelope.run_id` within the merged source result. Flat
+  entries win on collision (scanned first); the second instance is
+  recorded as a `duplicate-run-id` failure for producer-side debugging.
+- **I7 (Opus Info-1)** Metrics catalog `description` + `aggregation`
+  strings updated to reflect the round-2 W2 receiver-filter AND the
+  round-3 C3 initiating-handoff denominator. `null_when` clarified.
+- **I8 (Opus Info-2)** `Object.freeze(new Set(...))` is a no-op for Set
+  mutation methods. Dropped the freeze with a comment explaining the
+  convention; `const` reference alone is sufficient.
+- **I9 (Opus Info-3)** Added a symlinked-SUBDIR rejection test (sibling
+  to the round-2 symlinked-FILE test) — same defense, different attack
+  vector.
+- **I10 (Opus Info-4)** Broken-symlink test comment clarified — rejection
+  happens at the `pathExists` short-circuit, not the realpath check.
+  Added explicit `failures.length === 0` assertion.
+
+Test count: 209 → 214 (+5 net: 3 new C3 tests for multi-ack, new-task-via-reverse,
+all-continuations-degenerate; 1 W4 dedup test; 1 I9 symlinked-subdir test;
+2 existing tests updated for the new C3 semantic).
+
 ### Added
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` extended with two envelope
   tuples (`deep-work / handoff` and `deep-work / compaction-state`), bringing

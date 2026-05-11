@@ -262,7 +262,7 @@ metrics:
   - id: suite.handoff.roundtrip_success_rate
     tier: M4-core
     unit: ratio
-    description: "Fraction of handoff envelopes that round-tripped — i.e., a downstream non-aggregator envelope's parent_run_id chains back to the handoff's run_id. Source: claude-deep-suite/schemas/handoff.schema.json (artifact_kind=handoff). Both producers (deep-work forward + deep-evolve reverse) are aggregated into a single rate."
+    description: "Fraction of INITIATING handoff envelopes that round-tripped — i.e., a downstream non-aggregator envelope emitted by the declared receiver (payload.to.producer) carries parent_run_id chaining back to the handoff's run_id. Source: claude-deep-suite/schemas/handoff.schema.json (artifact_kind=handoff). Both producers (deep-work forward + deep-evolve reverse) are aggregated into a single rate; reverse handoffs that themselves chain back to a forward handoff are continuation signals, excluded from the denominator (they are themselves the round-trip evidence for the upstream handoff)."
     source:
       - producer: deep-work
         kind: handoff
@@ -272,8 +272,8 @@ metrics:
         kind: handoff
         path_glob: ".deep-evolve/{handoffs/*,*/handoff}.json"
         schema_id: "deep-suite/handoff/v1.0"
-    aggregation: "count(handoff envelopes — across both producers — whose run_id appears as a parent_run_id of any non-aggregator envelope) / count(handoff envelopes). Per claude-deep-suite/guides/long-run-handoff.md §7: covers reverse handoff (evolve-to-deep-work) + downstream receipt (evolve-receipt) cases. Aggregator-kind envelopes (harnessability-report, evolve-insights, index) are excluded from the child side per the same guide; they index, they don't continue a thread."
-    null_when: "no handoff envelopes present"
+    aggregation: "count(INITIATING handoffs whose run_id appears as a parent_run_id of any non-aggregator envelope produced by their declared payload.to.producer) / count(INITIATING handoffs). Per claude-deep-suite/guides/long-run-handoff.md §7: 'the receiver either emits a reverse handoff back, OR emits a final receipt'. A handoff is INITIATING when its parent_run_id is absent or does not chain to another handoff (Round 3 fix: continuation handoffs are excluded from the denominator). Aggregator-kind envelopes (harnessability-report, evolve-insights, index) are excluded from the child side per the same guide; they index, they don't continue a thread. Handoffs missing payload.to.producer are kept in the denominator but cannot match any child → defensively excluded from the numerator."
+    null_when: "no initiating handoff envelopes present (all observed handoffs are continuations)"
 
   # ────────────────────────── M4-deferred (1) ──────────────────────────────
   # Emit { value: null, deferred_until: <milestone> } until source lands.

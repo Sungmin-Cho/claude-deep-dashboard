@@ -86,6 +86,43 @@ broken symlink 거절, in-tree symlink 허용, unrelated-sender child 거절
 (W2 negative), receiver-produced child 카운팅 (W2 positive), payload.to
 누락 defensive path, handoff + compaction 양쪽 W3 symmetric 테스트).
 
+### Round 3 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+- **C3 (Codex adversarial HIGH)** Reverse handoff 이 denominator 를
+  부풀림. `long-run-handoff.md` §7 에 따르면 reverse handoff (다른
+  handoff 의 `run_id` 로 chain 되는 handoff) 는 upstream handoff 의
+  receiver 측 success signal 이지, 자체 child 가 필요한 fresh
+  initiating handoff 이 아님. Round-2 는 모든 handoff 를 denominator
+  에 포함시켜 canonical happy path (forward + reverse) 가 50% 로
+  capping — operator dashboard 에 materially misleading.
+  Fix: denominator = INITIATING handoff 만 (parent_run_id 없거나
+  다른 handoff 의 run_id 로 chain 되지 않는 경우). `source_summary`
+  에 `handoffs_continuation` drill-down 노출. canonical happy path 가
+  이제 정확히 1.0 보고.
+- **W4 (Codex review P2)** `dir+session-glob` merge 가 flat +
+  per-session 항목을 `run_id` 기준 dedup 없이 concatenate. Producer 가
+  양 layout 에 같은 envelope 을 emit 시 (transitional period, accidental
+  double-write) `compaction.frequency`, `roundtrip` denominator,
+  `chains` index 모두 inflate.
+  Fix: source 내 `envelope.run_id` 기준 dedup. 충돌 시 flat 우선
+  (먼저 scan), 두 번째 instance 는 producer 디버깅용
+  `duplicate-run-id` failure 로 기록.
+- **I7 (Opus Info-1)** Metrics catalog 의 `description` + `aggregation`
+  문자열을 round-2 W2 receiver-filter + round-3 C3 initiating-handoff
+  denominator 반영. `null_when` 명확화.
+- **I8 (Opus Info-2)** `Object.freeze(new Set(...))` 은 Set mutation 에
+  no-op. freeze 제거 + convention 주석 추가; `const` reference 만으로
+  충분.
+- **I9 (Opus Info-3)** symlinked-SUBDIR 거절 테스트 추가 (round-2
+  symlinked-FILE 테스트의 sibling — 같은 방어, 다른 attack vector).
+- **I10 (Opus Info-4)** broken-symlink 테스트 주석 명확화 — 거절은
+  `pathExists` short-circuit (realpath check 아님) 에서 발생. 명시적
+  `failures.length === 0` assertion 추가.
+
+테스트 카운트: 209 → 214 (+5 net: 3 신규 C3 테스트 (multi-ack,
+new-task-via-reverse, all-continuations-degenerate); 1 W4 dedup 테스트;
+1 I9 symlinked-subdir 테스트; 2 기존 테스트가 새 C3 semantic 으로 업데이트).
+
 ### 추가
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` 에 envelope tuple 2개
   (`deep-work / handoff`, `deep-work / compaction-state`) 추가, 대시보드의
