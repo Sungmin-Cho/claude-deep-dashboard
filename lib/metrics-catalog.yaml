@@ -145,13 +145,9 @@ metrics:
       - producer: deep-review
         kind: review-report
         path_glob: ".deep-review/reports/*-review.md"
-        schema_id: null  # frontmatter parsed, not JSON envelope
-      - producer: deep-review
-        kind: recurring-findings
-        path_glob: ".deep-review/recurring-findings.json"
-        schema_id: "deep-review/recurring-findings/v1.0"
-    aggregation: "{ APPROVE: n_a, CONCERN: n_c, REQUEST_CHANGES: n_r } where each is the count of reports whose frontmatter `verdict` field matches. recurring-findings provides cross-report dedupe context only."
-    null_when: "no .deep-review/reports/*-review.md files exist"
+        schema_id: null  # markdown body parsed via `**Verdict**:` token, not JSON envelope
+    aggregation: "{ APPROVE: n_a, CONCERN: n_c, REQUEST_CHANGES: n_r } where each is the count of reports whose **Verdict** line matches the token (leading-anchored, severity precedence on prose ambiguity: REQUEST_CHANGES > CONCERN > APPROVE)."
+    null_when: "no .deep-review/reports/*-review.md files exist OR none parseable"
 
   - id: suite.review.recurring_finding_count
     tier: M4-core
@@ -172,11 +168,10 @@ metrics:
     source:
       - producer: deep-wiki
         kind: log
-        path_glob: ".deep-wiki/log.jsonl"
+        path_glob: ".deep-wiki/log.jsonl"  # or <wiki_root>/log.jsonl when DEEP_WIKI_ROOT set
         schema_id: null  # NDJSON event log
-      # Plus optional external <wiki_root>/log.jsonl when DEEP_WIKI_ROOT env set
     aggregation: "count(line where parsed.event == 'auto-ingest-candidate' OR parsed.event == 'session-start-detect')."
-    null_when: "log.jsonl missing OR no matching events"
+    null_when: "log.jsonl missing or unreadable (file exists with 0 matching events → emits 0, not null)"
 
   - id: suite.docs.auto_fix_accept_rate
     tier: M4-core
@@ -199,8 +194,8 @@ metrics:
         kind: evolve-receipt
         path_glob: ".deep-evolve/evolve-receipt.json"
         schema_id: "deep-evolve/evolve-receipt/v1.0"
-    aggregation: "(payload.score.current - payload.score.baseline) / max(payload.evaluation_epochs, 1)."
-    null_when: "evolve-receipt missing OR evaluation_epochs == 0 OR score.baseline/current missing"
+    aggregation: "(payload.score.current - payload.score.baseline) / payload.evaluation_epochs. Returns null when epochs ≤ 0 (avoids implying a 'per-epoch' delta exists when no epochs ran)."
+    null_when: "evolve-receipt missing OR evaluation_epochs ≤ 0 OR score.baseline/current missing or non-numeric"
 
   - id: suite.dashboard.missing_signal_ratio
     tier: M4-core

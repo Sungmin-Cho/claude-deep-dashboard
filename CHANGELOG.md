@@ -13,6 +13,25 @@
 ### Migration notes
 - `plugin.json.version` still 1.2.0; final bump to 1.3.0 in PR 3.
 
+### Round 1 review fixes (PR #6 — 3-way Opus + Codex review + Codex adversarial)
+
+8 findings, all addressed:
+
+- **3-way agreement (🔴 1)**: `computeBlockRate` / `computeErrorRate` denominators included non-hook NDJSON events from the deep-wiki vault `log.jsonl` (`kind === 'log'`, carries wiki ingest events). A busy wiki log would dilute hook rates to near-zero. Filter added: only `kind === 'hook-log'` sources contribute. Two regression tests with 200/100 wiki events + 2 hook events confirm the wiki noise is excluded.
+- **Opus W1 🟡**: `parseVerdictFromMarkdown` substring poisoning — `**Verdict**: APPROVE — no CONCERN raised` previously returned `CONCERN`. Rewrote as a 3-tier scanner: (1) leading-anchored regex `^<TOKEN>\b` against the verdict-line tail (handles markdown emphasis `**APPROVE**`, italics `*APPROVE*`, backticks `\`APPROVE\``), (2) severity-ordered word-boundaried scan inside the verdict line (handles table-cell verdicts), (3) whole-doc fallback. Three regression tests for prose distractors + emphasis markers.
+- **Opus W2 🟡**: `trendArrow` collapsed "stable" and "regressed to unknown" into `→`. New arrow vocabulary: `↑` / `↓` / `→` (equal) / `·` (no baseline) / `?` (asymmetric null OR distribution shape divergence). Tests updated.
+- **Opus W3 🟡**: `appendSnapshot` docstring honest about `O_APPEND` atomicity boundary (`PIPE_BUF` ≈ 4 KiB) and rotation absence. Cross-process advisory locking + rotation knob deferred to M5 backlog. No code change — the docstring update is the fix.
+- **Opus W4 🟡**: `metrics-catalog.yaml` `suite.review.verdict_mix` listed `recurring-findings` as a 2nd source but the aggregator never consumed it — catalog drift. Removed the unused source entry; aggregation description now reflects the actual leading-anchored token parser.
+- **Opus I5 ℹ️**: `metrics-catalog.yaml` `suite.wiki.auto_ingest_candidates_total.null_when` previously said "no matching events" → null. Implementation returns `0` (count semantics — file scanned, 0 matches). Catalog now matches: "missing or unreadable" only.
+- **Opus I6 ℹ️**: `computeDocsAutoFixAcceptRate` + `computeEvolveQDelta` `envelopes[0]` access annotated with explicit single-cardinality contract comment, calling out the sort-by-generated_at-desc evolution path if collector ever emits multi-envelope.
+- **Opus I7 ℹ️**: `metrics-catalog.yaml` `suite.evolve.q_delta_per_epoch` aggregation formula previously said `max(epochs, 1)` (never-null) but impl returns `null` when `epochs ≤ 0`. Catalog now matches impl with reasoning ("avoids implying a per-epoch delta exists when no epochs ran").
+
+Deferred (out-of-scope per anti-oscillation §4):
+- I8 cosmetic (`renderValue` integer-floored seconds, harmless fractional handling).
+- I9 test gaps — concurrent appendSnapshot, unicode source_summary, very-large JSONL (>1 MB). M5 candidate.
+
+Tests: 145 → 150 (+5 Round 1 regression tests). All pass.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
 
 ### Added
