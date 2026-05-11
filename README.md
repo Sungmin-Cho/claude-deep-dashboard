@@ -4,10 +4,11 @@
 
 Cross-plugin harness diagnostics for the [deep-suite](https://github.com/sungmin/deep-suite) ecosystem.
 
-deep-dashboard provides two capabilities:
+deep-dashboard provides three capabilities:
 
 1. **Harnessability Diagnosis** — a fully computational 6-dimension assessment of how "harness-able" a codebase is, with a 0–10 score and actionable recommendations.
-2. **Unified Dashboard** — aggregates sensor receipts from deep-work, deep-review, and deep-docs into a single effectiveness view with action routing.
+2. **Unified Dashboard** (legacy mode) — aggregates sensor receipts from deep-work, deep-review, and deep-docs into a single effectiveness view with action routing.
+3. **Suite Telemetry** (`--suite`, since 1.3.0) — accumulates time-series for the 16 M4 suite metrics (`block_rate`, `error_rate`, `freshness_seconds`, `recurring_finding_count`, `chain_completeness`, etc.) defined in `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4. Appends to `.deep-dashboard/suite-metrics.jsonl`, renders trend report at `.deep-dashboard/suite-report.md`, and optionally exports to OTLP/HTTP-JSON via `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
 ---
 

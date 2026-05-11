@@ -2,6 +2,31 @@
 
 # Changelog
 
+## [1.3.0] — 2026-05-11 — M4 Suite Telemetry Aggregator
+
+Closes M4 milestone (cf. `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4). 16 suite-level metrics, time-series JSONL accumulation, markdown trend report, optional OTLP exporter, and a deliberate "HOLD" decision on plugin monitors (revisit in M4.5).
+
+This release rolls up three PRs:
+- PR 1 #5 — `lib/metrics-catalog.yaml` + `lib/suite-collector.js` + `lib/suite-constants.js`.
+- PR 2 #6 — `lib/aggregator.js` + `lib/suite-formatter.js`.
+- PR 3 #7 — `lib/otel.js` + `docs/monitor-decision.md` + version bump + README/skill docs.
+
+### Added (PR 3/3 — §4.5 + §4.6 + §4.7)
+- **`lib/otel.js`** — Optional OTLP/HTTP-JSON exporter. Activates only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; no-op otherwise (default M4 output path remains JSONL + markdown). Posts each non-null M4-core numeric metric as a gauge data point. Distribution metric `suite.review.verdict_mix` fans out into three gauges. M4-deferred metrics (null) skipped. Failures non-fatal — returns `{ exported: false, reason }`. Zero new dependency — uses `globalThis.fetch` + OTLP/HTTP-JSON body shape. Resource attributes: `service.name=deep-dashboard`, `suite.snapshot.run_id`, `suite.project_root`.
+- **`docs/monitor-decision.md`** — Plugin monitors spike decision (M4 §4.6): **HOLD until M4.5**. Spike evaluated 3 acceptance gates (threshold defensibility, cross-platform reliability, notification-fatigue posture). Gate 1 FAIL — no baseline data to set defensible thresholds. Re-evaluation by 2026-08-11 (T+0 + 3 months) after `suite-metrics.jsonl` accumulates 4+ weeks of history.
+- 17 new tests (`lib/otel.test.js`) covering: endpoint resolution (with/without `/v1/metrics` suffix, trailing slash) + header parsing (key=value, malformed, empty) + OTLP payload shape (gauge fan-out for distribution + skip rules for M4-deferred and null + timeUnixNano encoding + resource attributes) + env-gated no-op (unset/empty) + injectable fetcher + http-status / network-error / fetch-unavailable failure paths.
+
+### Changed (PR 3/3)
+- **`plugin.json.version`** bumped 1.2.0 → 1.3.0.
+- **`package.json.version`** bumped 1.2.0 → 1.3.0.
+- **`skills/deep-harness-dashboard.md`** — added `--suite` mode steps + 11-source table for suite telemetry path. Frontmatter description mentions M4.
+- **`README.md` + `README.ko.md`** — capability list expanded from 2 → 3, calling out M4 Suite Telemetry.
+- **`.gitignore`** — pattern changed from `docs/` to `docs/*` with `!docs/monitor-decision.md` exception so the decision record ships with the plugin while local plans remain ignored.
+
+### Migration notes (PR 3/3)
+- Consumers wanting OTLP export only need to set `OTEL_EXPORTER_OTLP_ENDPOINT` (and optionally `OTEL_EXPORTER_OTLP_HEADERS=key=value,...`); no code change required.
+- Aggregator + formatter API surface stable since PR 2. PR 3 only adds `lib/otel.js` and documentation.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
 
 ### Added
