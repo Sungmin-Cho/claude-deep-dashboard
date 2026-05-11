@@ -2,6 +2,31 @@
 
 # 변경 이력
 
+## [1.3.0] — 2026-05-11 — M4 Suite Telemetry Aggregator
+
+M4 마일스톤 종결 (`claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4). 16 suite-level metric, 시계열 JSONL 누적, markdown trend report, 옵션 OTLP exporter, plugin monitors 의 의도적 "HOLD" 결정 (M4.5 재평가).
+
+이 릴리스는 3개 PR 통합:
+- PR 1 #5 — `lib/metrics-catalog.yaml` + `lib/suite-collector.js` + `lib/suite-constants.js`.
+- PR 2 #6 — `lib/aggregator.js` + `lib/suite-formatter.js`.
+- PR 3 #7 — `lib/otel.js` + `docs/monitor-decision.md` + version bump + 문서 갱신.
+
+### 추가 (PR 3/3 — §4.5 + §4.6 + §4.7)
+- **`lib/otel.js`** — Optional OTLP/HTTP-JSON exporter. `OTEL_EXPORTER_OTLP_ENDPOINT` 가 설정된 경우에만 활성, 미설정 시 no-op (기본 M4 출력 경로는 JSONL + markdown 유지). 각 non-null M4-core numeric metric → gauge data point. Distribution metric `suite.review.verdict_mix` 은 3개 gauge 로 fan-out. M4-deferred metric (null) 은 skip. 실패는 non-fatal: `{ exported: false, reason }` 반환. 신규 의존성 없음 — `globalThis.fetch` + OTLP/HTTP-JSON body 사용. Resource attributes: `service.name=deep-dashboard`, `suite.snapshot.run_id`, `suite.project_root`.
+- **`docs/monitor-decision.md`** — Plugin monitors spike 결정 (M4 §4.6): **M4.5 까지 HOLD**. spike 가 3개 acceptance gate 평가 (threshold defensibility, cross-platform reliability, notification-fatigue posture). Gate 1 FAIL — defensible threshold 설정에 필요한 baseline data 없음. 2026-08-11 (T+0 + 3 개월) 재평가, `suite-metrics.jsonl` 4주+ 누적 후.
+- 17 신규 테스트 (`lib/otel.test.js`): endpoint resolution (`/v1/metrics` suffix 유무, trailing slash) + header parsing + OTLP payload shape (distribution gauge fan-out + M4-deferred / null skip 규칙 + timeUnixNano encoding + resource attributes) + env-gated no-op + injectable fetcher + http-status / network-error / fetch-unavailable failure paths.
+
+### 변경 (PR 3/3)
+- **`plugin.json.version`** 1.2.0 → 1.3.0.
+- **`package.json.version`** 1.2.0 → 1.3.0.
+- **`skills/deep-harness-dashboard.md`** — `--suite` 모드 단계 + 11-source 테이블 추가. Frontmatter description 에 M4 언급.
+- **`README.md` + `README.ko.md`** — 기능 리스트 2 → 3 으로 확장, M4 Suite Telemetry 호출.
+- **`.gitignore`** — `docs/` 에서 `docs/*` + `!docs/monitor-decision.md` 예외로 변경. decision record 는 plugin 과 함께 ship, local plans 는 ignored 유지.
+
+### 마이그레이션 노트 (PR 3/3)
+- OTLP export 가 필요한 consumer 는 `OTEL_EXPORTER_OTLP_ENDPOINT` 만 설정 (optional: `OTEL_EXPORTER_OTLP_HEADERS=key=value,...`). 코드 변경 불필요.
+- Aggregator + formatter API surface 는 PR 2 이후 안정. PR 3 는 `lib/otel.js` + 문서만 추가.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
 
 ### 추가

@@ -50,5 +50,9 @@ tsconfig.tsbuildinfo
 .deep-review/entropy-log.jsonl
 .deep-review/recurring-findings.json
 
-# Development docs (specs, plans, backlog) — local-only, not for remote
-docs/
+# Development docs (specs, plans, backlog) — local-only, not for remote.
+# Use `docs/*` rather than `docs/` so individual children below can be
+# re-included via `!`-prefixed exceptions.
+docs/*
+# Exception: architecture decision records ship with the plugin.
+!docs/monitor-decision.md

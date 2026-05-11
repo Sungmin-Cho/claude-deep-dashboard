@@ -4,10 +4,11 @@
 
 [deep-suite](https://github.com/sungmin/deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
 
-deep-dashboard는 두 가지 기능을 제공합니다:
+deep-dashboard는 세 가지 기능을 제공합니다:
 
 1. **Harnessability 진단** — 코드베이스의 "harness 가능성"을 6개 차원으로 완전히 계산하여 0–10점 점수와 실행 가능한 권장 사항을 제공합니다.
-2. **통합 Dashboard** — deep-work, deep-review, deep-docs의 sensor 수신 데이터를 단일 효과성 뷰로 집계하고 액션 라우팅을 제공합니다.
+2. **통합 Dashboard** (기본 모드) — deep-work, deep-review, deep-docs의 sensor 수신 데이터를 단일 효과성 뷰로 집계하고 액션 라우팅을 제공합니다.
+3. **Suite Telemetry** (`--suite`, 1.3.0 이후) — `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4 에 정의된 16개 suite metric (`block_rate`, `error_rate`, `freshness_seconds`, `recurring_finding_count`, `chain_completeness` 등) 시계열 누적. `.deep-dashboard/suite-metrics.jsonl` 에 append, `.deep-dashboard/suite-report.md` 에 trend report 렌더링. `OTEL_EXPORTER_OTLP_ENDPOINT` 가 설정되면 OTLP/HTTP-JSON 으로 옵션 export.
 
 ---
 
