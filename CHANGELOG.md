@@ -26,6 +26,28 @@ This release rolls up three PRs:
 ### Migration notes (PR 3/3)
 - Consumers wanting OTLP export only need to set `OTEL_EXPORTER_OTLP_ENDPOINT` (and optionally `OTEL_EXPORTER_OTLP_HEADERS=key=value,...`); no code change required.
 - Aggregator + formatter API surface stable since PR 2. PR 3 only adds `lib/otel.js` and documentation.
+- `package.json.version` is bumped in lockstep with `plugin.json` for local `npm` tooling consistency only — **`plugin.json.version` remains the single source of truth** per CLAUDE.md convention.
+
+### Round 1 review polish (PR #7 — 1-way Opus, Codex tokens expired mid-session)
+
+3 cheap improvements applied; remaining warnings/info documented:
+
+- **W3 (cheap)**: `parseHeaders` now has a regression test asserting embedded `=` characters in values (base64 tokens ending `==`) round-trip correctly. Behavior was already correct via `indexOf('=')` + `slice(eq+1)`; the test locks it in.
+- **W4 (UX)**: `exportSnapshot` now validates `OTEL_EXPORTER_OTLP_ENDPOINT` starts with `http://` or `https://` and returns `{ exported: false, reason: 'invalid-endpoint-scheme', endpoint: <raw> }` instead of letting fetch throw an opaque "Invalid URL". Catches the common typo of forgetting the scheme prefix.
+- **W5 (shape consistency)**: All return paths now include the `endpoint` field (set to `null` for no-endpoint / fetch-unavailable cases). Eliminates the prior shape variance where callers had to defensively check `result.endpoint?.startsWith(...)`.
+
+Accepted as-documented (no code change):
+- **W1**: each metric carries one data point per snapshot (one-tick exporter). Acceptable for the M4 use case; documented in the module-level comment.
+- **W2**: `parseHeaders` does NOT URL-decode `%2C` etc. Per the documented contract ("comma-separated `key=value`"), the implementation is honest. Full W3C-style URL-decoding is a M5 candidate if real OTel deployments need it.
+
+Deferred (per anti-oscillation §4):
+- I1 double-slash endpoint tolerance — low priority.
+- I3 monitor decision: Gate 1 FAIL alone is dispositive (Gates 2–3 are downstream contingencies) — wording-only nit.
+- I5–I6 integration test against real collector + concurrent / large payload tests — M5 candidate.
+
+Tests: 169 → 172 (+3 polish regression tests). All pass.
+
+
 
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
 
