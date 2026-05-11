@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "envelope": {
+    "producer": "deep-evolve",
+    "producer_version": "3.2.0",
+    "artifact_kind": "evolve-receipt",
+    "run_id": "01HX2VRACDEFGHJKMNPQRSTW1",
+    "parent_run_id": "01HX2VR8ABCDEFGHJKMNPQRSTW",
+    "generated_at": "2026-05-11T17:00:00Z",
+    "schema": { "name": "evolve-receipt", "version": "1.0" },
+    "git": { "head": "cccccccccccccccccccccccccccccccccccccccc", "branch": "main", "dirty": false },
+    "provenance": { "source_artifacts": [], "tool_versions": { "node": "20.11.0" } }
+  },
+  "payload": {
+    "plugin": "deep-evolve",
+    "version": "3.2.0",
+    "receipt_schema_version": 1,
+    "timestamp": "2026-05-11T17:00:00Z",
+    "session_id": "evolve-after-jwt-handoff",
+    "goal": "jwt verify performance",
+    "experiments": { "total": 12, "kept": 4 },
+    "score": { "baseline": 180, "current": 90 },
+    "evaluation_epochs": 3
+  }
+}

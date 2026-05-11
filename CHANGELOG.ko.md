@@ -12,6 +12,49 @@
 
 단일 PR, backward-compatible additions only.
 
+### Round 1 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+`/deep-review` 의 C1 (3-way 일치) + W1 (Opus 단독) 동일 PR 내 처리.
+Round 1 에서 dashboard 의 source 선언을 suite 가이드가 묘사하는 실제
+producer 표면과 정렬.
+
+- **C1 (3-way) — Handoff 메트릭 발견 계약**:
+  - `EXPECTED_SOURCES` 13 → 15: `(deep-evolve, handoff)` 와
+    `(deep-evolve, compaction-state)` 추가. Reverse handoff
+    (`handoff_kind: "evolve-to-deep-work"`) 은 `long-run-handoff.md` §4.3
+    에 따라 deep-evolve 가 emit; compaction-state 도 epoch boundary 에서
+    deep-evolve emit (`context-management.md` §6).
+  - 신규 collector cardinality `dir+session-glob`: 각 (producer, kind)
+    소스가 flat aggregation dir
+    (`.deep-<plugin>/<kind-plural>/*.json`) AND per-session subdir
+    (`.deep-<plugin>/<session>/<kind-singular>.json`) 양쪽 스캔. suite
+    문서에 등장하는 두 layout 을 producer 측 중복 emit 없이 흡수.
+  - `computeHandoffRoundtripSuccessRate` 와 compaction 메트릭 2개가
+    `(*, handoff)` / `(*, compaction-state)` 모든 소스를 cross-producer 로
+    집계.
+  - `*_producers` 배열을 `source_summary` 에 노출 (drill-down).
+  - end-to-end fixture pair: `handoff.fixture.json` +
+    `evolve-receipt-roundtrip.fixture.json` (`parent_run_id` 로 chain back)
+    + 신규 e2e 테스트 가 happy path 에서 `roundtrip_success_rate === 1.0`
+    검증.
+- **W1 (Opus) — Roundtrip 메트릭의 aggregator-kind 제외**:
+  - `AGGREGATOR_KINDS` 를 `suite-collector.js#_internal` 에서
+    `suite-constants.js` 의 top-level export 로 승격 (shared single
+    source of truth).
+  - `computeHandoffRoundtripSuccessRate` 가 `childrenByParent` 빌드 시
+    aggregator-kind envelope (`harnessability-report`, `evolve-insights`,
+    `index`) 을 skip — catalog 계약 ("downstream non-aggregator envelope's
+    parent_run_id chains back") 과 `reconstructChains` 의 기존 제외 로직
+    미러링.
+- **I1 — `missing_signal_ratio` source_summary**: literal `expected_total: 13`
+  을 `EXPECTED_SOURCES.length` 로 교체, 다음 활성화 사이클에서 magic
+  number drift 방지.
+
+테스트 카운트: 188 → 201 (+13 round-1 리뷰 테스트: per-session subdir
+발견, flat+session merge no-double-count, hidden-dir skip, reverse
+handoff identity validation, aggregator-kind 제외, happy path fixture
+pair).
+
 ### 추가
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` 에 envelope tuple 2개
   (`deep-work / handoff`, `deep-work / compaction-state`) 추가, 대시보드의

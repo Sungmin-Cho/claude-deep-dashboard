@@ -12,6 +12,47 @@ Activates 3 of the 4 M4-deferred metrics now that
 
 Single PR, backward-compatible additions only.
 
+### Round 1 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+`/deep-review` C1 (3-way agreement) + W1 (Opus single) addressed in PR.
+Round 1 expanded the dashboard's source declaration to match the actual
+producer surface described in the suite guides.
+
+- **C1 (3-way) — Handoff metric discovery contract**:
+  - `EXPECTED_SOURCES` 13 → 15: added `(deep-evolve, handoff)` and
+    `(deep-evolve, compaction-state)`. Reverse handoffs
+    (`handoff_kind: "evolve-to-deep-work"`) are emitted by deep-evolve per
+    `long-run-handoff.md` §4.3; compaction-state is also a deep-evolve emit
+    at epoch boundaries per `context-management.md` §6.
+  - New collector cardinality `dir+session-glob`: each (producer, kind)
+    source now scans BOTH the flat aggregation dir
+    (`.deep-<plugin>/<kind-plural>/*.json`) AND per-session subdir
+    (`.deep-<plugin>/<session>/<kind-singular>.json`). Matches both layouts
+    that appear in suite docs without forcing producers to write duplicates.
+  - `computeHandoffRoundtripSuccessRate` and the two compaction metrics now
+    aggregate across all `(*, handoff)` / `(*, compaction-state)` sources.
+  - `computeCompactionFrequency` / `computeHandoffRoundtripSuccessRate`
+    `source_summary` carries a `*_producers` array for drill-down.
+  - End-to-end fixture pair: `handoff.fixture.json` +
+    `evolve-receipt-roundtrip.fixture.json` (chains back via `parent_run_id`)
+    + new e2e test asserts `roundtrip_success_rate === 1.0` on happy path.
+- **W1 (Opus) — Aggregator-kind exclusion in roundtrip metric**:
+  - `AGGREGATOR_KINDS` promoted from `suite-collector.js#_internal` to
+    `suite-constants.js` as a top-level export (shared single source of truth).
+  - `computeHandoffRoundtripSuccessRate` now skips aggregator-kind envelopes
+    (`harnessability-report`, `evolve-insights`, `index`) when building
+    `childrenByParent` — matches the catalog contract ("downstream
+    non-aggregator envelope's parent_run_id chains back") and mirrors
+    `reconstructChains`'s existing exclusion logic.
+- **I1 — `missing_signal_ratio` source_summary**: literal `expected_total: 13`
+  replaced with `EXPECTED_SOURCES.length` to prevent magic-number drift on
+  the next activation cycle.
+
+Test count: 188 → 201 (+13 round-1 review tests covering per-session subdir
+discovery, flat+session merge no-double-count, hidden-dir skip, reverse
+handoff identity validation, aggregator-kind exclusion, and the happy-path
+fixture pair).
+
 ### Added
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` extended with two envelope
   tuples (`deep-work / handoff` and `deep-work / compaction-state`), bringing
