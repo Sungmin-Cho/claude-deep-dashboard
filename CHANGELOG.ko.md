@@ -2,6 +2,21 @@
 
 # 변경 이력
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
+
+### 추가
+- **`lib/metrics-catalog.yaml`** — `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4 의 16개 suite-level 메트릭 카탈로그. M4-core 12개는 즉시 활성화, M4-deferred 4개는 `deferred_until: M5` / `M5.5` 표기와 함께 source 도달 전까지 `null` emit.
+- **`lib/suite-collector.js`** — legacy `lib/dashboard/collector.js` 가 다루지 않는 4개 source 를 envelope-aware 로 수집: `deep-review/recurring-findings`, `deep-evolve/evolve-insights`, `deep-wiki/index` (외부 `<wiki_root>/index.json` 은 `options.wikiRoot` 인자, `DEEP_WIKI_ROOT` 환경변수, project-local 폴백 순으로 해석), per-plugin hook NDJSON 로그 (`.deep-work/hooks.log.jsonl` 등). `parent_run_id` chain 재구성 (aggregator-pattern envelope — `harnessability-report`, `evolve-insights`, `index` — 은 schema-documented 계약에 따라 denominator 에서 제외).
+- **`lib/suite-constants.js`** — 6-month legacy fallback timer (`T+0 = 2026-05-07`, `T+0+6mo = 2026-11-07`), per-plugin envelope adoption ledger (`claude-deep-suite/docs/envelope-migration.md` §6.1 mirror), `EXPECTED_SOURCES` 8-tuple (M4-core 가 의존하는 producer/kind 쌍) 의 단일 진실원본. `legacyFallbackExpired(nowIso)` 헬퍼.
+- 18 신규 테스트 (`lib/suite-collector.test.js`, `lib/suite-constants.test.js`): envelope unwrap + identity-guard rejection + payload-shape-violation rejection + chain reconstruction (resolved / unresolved / aggregator-excluded) + missing-signal-ratio + NDJSON hook log parsing (malformed line skip) + `wikiRoot` 옵션 + `DEEP_WIKI_ROOT` env + legacy pre-envelope 감지 + 6-month timer flip 일자 검증.
+
+### 변경
+- **`package.json` `test` 스크립트** 를 `node --test "lib/**/*.test.js"` 로 따옴표 wrap. 이전엔 `sh` flat-globbing 이 `lib/*.test.js` top-level 파일을 누락시키는 silent drop 발생.
+
+### 마이그레이션 노트
+- M4 collector 는 CONSUMER. PR 1 에는 producer-side breaking change 없음. PR 2 (aggregator) + PR 3 (OTel/monitor) 가 이 위에 쌓임.
+- `plugin.json.version` 은 M4 마지막 PR (3/3) merge 까지 1.2.0 유지. suite repo `marketplace.json` SHA bump 은 그 머지 이후 별도 suite-repo PR 에서 처리.
+
 ## [1.2.0] — 2026-05-07
 
 ### 변경

@@ -2,6 +2,21 @@
 
 # Changelog
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
+
+### Added
+- **`lib/metrics-catalog.yaml`** — Authoritative catalog of the 16 suite-level metrics defined in `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4. 12 M4-core metrics activate immediately; 4 M4-deferred metrics carry `deferred_until: M5` / `M5.5` markers and emit `null` until source artifacts land.
+- **`lib/suite-collector.js`** — Envelope-aware reader covering four sources the legacy `lib/dashboard/collector.js` does not consume: `deep-review/recurring-findings`, `deep-evolve/evolve-insights`, `deep-wiki/index` (external `<wiki_root>/index.json` resolution via `options.wikiRoot` argument, `DEEP_WIKI_ROOT` env var, or project-local fallback), and per-plugin hook NDJSON logs (`.deep-work/hooks.log.jsonl`, `.deep-evolve/hooks.log.jsonl`, `.deep-wiki/log.jsonl`). Performs `parent_run_id` chain reconstruction (aggregator-pattern envelopes — `harnessability-report`, `evolve-insights`, `index` — are excluded from the denominator per their schema-documented contract).
+- **`lib/suite-constants.js`** — Single-point-of-truth for the 6-month legacy fallback timer (`T+0 = 2026-05-07`, `T+0+6mo = 2026-11-07`), per-plugin envelope adoption ledger (mirrors `claude-deep-suite/docs/envelope-migration.md` §6.1), and `EXPECTED_SOURCES` tuples (8 producer/kind pairs M4-core depends on). `legacyFallbackExpired(nowIso)` helper.
+- 18 new tests (`lib/suite-collector.test.js`, `lib/suite-constants.test.js`) covering envelope unwrap + identity-guard rejection + payload-shape-violation rejection + chain reconstruction (resolved / unresolved / aggregator-excluded) + missing-signal-ratio + NDJSON hook log parsing (malformed-line skip) + `wikiRoot` option + `DEEP_WIKI_ROOT` env var + legacy pre-envelope detection + 6-month timer flip dates.
+
+### Changed
+- **`package.json` `test` script** quote-wrapped to `node --test "lib/**/*.test.js"` so node handles glob expansion (previously `sh` flat-globbing missed `lib/*.test.js` top-level entries — silent test-file drop).
+
+### Migration notes
+- M4 collector is a CONSUMER. No producer-side breaking changes in PR 1; downstream PRs (PR 2 aggregator + PR 3 OTel/monitor) build on this foundation.
+- `plugin.json.version` stays at 1.2.0 until the final M4 PR (3/3) merges; the suite repo `marketplace.json` SHA bump follows that final merge in a separate suite-repo PR.
+
 ## [1.2.0] — 2026-05-07
 
 ### Changed
