@@ -6,12 +6,37 @@
 
 ### Added
 - **`lib/metrics-catalog.yaml`** — Authoritative catalog of the 16 suite-level metrics defined in `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4. 12 M4-core metrics activate immediately; 4 M4-deferred metrics carry `deferred_until: M5` / `M5.5` markers and emit `null` until source artifacts land.
-- **`lib/suite-collector.js`** — Envelope-aware reader covering four sources the legacy `lib/dashboard/collector.js` does not consume: `deep-review/recurring-findings`, `deep-evolve/evolve-insights`, `deep-wiki/index` (external `<wiki_root>/index.json` resolution via `options.wikiRoot` argument, `DEEP_WIKI_ROOT` env var, or project-local fallback), and per-plugin hook NDJSON logs (`.deep-work/hooks.log.jsonl`, `.deep-evolve/hooks.log.jsonl`, `.deep-wiki/log.jsonl`). Performs `parent_run_id` chain reconstruction (aggregator-pattern envelopes — `harnessability-report`, `evolve-insights`, `index` — are excluded from the denominator per their schema-documented contract).
-- **`lib/suite-constants.js`** — Single-point-of-truth for the 6-month legacy fallback timer (`T+0 = 2026-05-07`, `T+0+6mo = 2026-11-07`), per-plugin envelope adoption ledger (mirrors `claude-deep-suite/docs/envelope-migration.md` §6.1), and `EXPECTED_SOURCES` tuples (8 producer/kind pairs M4-core depends on). `legacyFallbackExpired(nowIso)` helper.
-- 18 new tests (`lib/suite-collector.test.js`, `lib/suite-constants.test.js`) covering envelope unwrap + identity-guard rejection + payload-shape-violation rejection + chain reconstruction (resolved / unresolved / aggregator-excluded) + missing-signal-ratio + NDJSON hook log parsing (malformed-line skip) + `wikiRoot` option + `DEEP_WIKI_ROOT` env var + legacy pre-envelope detection + 6-month timer flip dates.
+- **`lib/suite-collector.js`** — Envelope-aware reader covering four sources the legacy `lib/dashboard/collector.js` does not consume: `deep-review/recurring-findings`, `deep-evolve/evolve-insights`, `deep-wiki/index` (external `<wiki_root>/.wiki-meta/index.json` per deep-wiki layout, resolved via `options.wikiRoot` argument, `DEEP_WIKI_ROOT` env var, or project-local fallback), and NDJSON event logs: 2 hook logs (`.deep-work/hooks.log.jsonl`, `.deep-evolve/hooks.log.jsonl`) + deep-wiki vault event log (`<wiki_root>/log.jsonl`, root-level — not under `.wiki-meta/`). Performs `parent_run_id` chain reconstruction with aggregator-pattern envelopes (`harnessability-report`, `evolve-insights`, `index`) excluded both as chain children AND as chain parents per their schema-documented contract.
+- **`lib/suite-constants.js`** — Single-point-of-truth for the 6-month legacy fallback timer (`T+0 = 2026-05-07`, `T+0+6mo = 2026-11-07T00:00:00Z` **exclusive cutoff**), per-plugin envelope adoption ledger (mirrors `claude-deep-suite/docs/envelope-migration.md` §6.1), `EXPECTED_SOURCES` (11 entries: 8 envelope + 3 NDJSON), and `PAYLOAD_REQUIRED_FIELDS` (per-kind required-key list mirroring authoritative payload schemas). `legacyFallbackExpired(nowIso)` helper.
+- 29 new tests (`lib/suite-collector.test.js` × 21, `lib/suite-constants.test.js` × 8) covering envelope unwrap + identity-guard rejection + payload-shape-violation rejection + **payload required-field check** (empty `{}` rejected, partial-shape rejected with field-list) + chain reconstruction (resolved / unresolved / aggregator-excluded-as-child / **aggregator-excluded-as-parent** / **non-string run_id rejected**) + missing-signal-ratio (envelope + NDJSON denominator) + NDJSON hook log parsing (malformed-line skip) + **readJsonDir parse-failure propagation** + `wikiRoot` option / `DEEP_WIKI_ROOT` env / project-local fallback + **legacy `<wiki_root>/index.json` location rejection** + bidirectional SOURCE_SPECS ↔ EXPECTED_SOURCES alignment + 6-month timer **exclusive-cutoff** boundary dates + PAYLOAD_REQUIRED_FIELDS coverage.
 
 ### Changed
 - **`package.json` `test` script** quote-wrapped to `node --test "lib/**/*.test.js"` so node handles glob expansion (previously `sh` flat-globbing missed `lib/*.test.js` top-level entries — silent test-file drop).
+
+### Round 1 review fixes (PR #5 — 3-way Opus + Codex review + Codex adversarial)
+
+11 findings, all addressed in this PR before merge:
+
+- **3-way agreement (🔴 1)**: `readJsonDir` silently dropped malformed JSON inside `.deep-work/receipts/` and similar dir-cardinality sources, undercounting `schema_failures_total`. Now propagates `unparseable-json` / `directory-unreadable` / `broken-symlink` / `out-of-boundary-symlink` failures with absolute paths.
+- **Codex P2 × 2 (🔴 2)**: External wiki paths corrected per deep-wiki storage layout (`skills/wiki-schema/wiki-schema.yaml`): `index.json` resolves to `<wiki_root>/.wiki-meta/index.json` (was `<wiki_root>/index.json` — never existed) and `log.jsonl` resolves to `<wiki_root>/log.jsonl` (was `<wiki_root>/.wiki-meta/log.jsonl` — never existed). The asymmetry is intentional: `.wiki-meta/` is hidden from Obsidian's graph view while `log.jsonl` stays scriptable at vault root.
+- **Codex adversarial HIGH (🔴 2)**:
+  1. `missing_signal_ratio` denominator expanded from 8 to 11 entries — hook logs (deep-work, deep-evolve) and deep-wiki vault log now count toward the ratio. A project missing all hook logs no longer reports `0` missing signals behind a healthy envelope-only ratio.
+  2. Payload-required-field validation layer added: empty `{}` payloads (and partial-shape payloads missing any required key per producer schema) are rejected with `missing-required-fields:<csv>` and flow into `schema_failures_total`. Zero-dep, mirrors `scripts/validate-envelope-emit.js` precedent; full ajv-style schema-runtime validation is a M5 candidate.
+- **Opus warnings (🟡 5)**:
+  - W1 — Aggregator-pattern envelopes (`harnessability-report`, `evolve-insights`, `index`) now excluded from `byRunId` map in `reconstructChains`, so they cannot serve as chain parents (previously asymmetric: excluded as children, eligible as parents — silently inflating completeness).
+  - W2 — `run_id` indexing tightened from truthy-check to `typeof === 'string' && length > 0`. Malformed envelopes with `run_id = {nested: true}` or `[]` can no longer pollute the parent map.
+  - W3 — 6-month timer comment rewritten with explicit exclusive-cutoff semantics + boundary table (2026-11-06T23:59:59Z → false, 2026-11-07T00:00:00Z → false, 2026-11-07T00:00:01Z → true).
+  - W4 — `cardinality: 'dir'` failure modes (permission errors, missing dir) distinguished via new `failures: [{path, reason}]` channel from `readJsonDir`.
+  - W5 — NDJSON stream IO error handler attached; `readNdjson` now returns `{events, missing, error}` so caller can distinguish "file absent" vs "read failed mid-stream".
+- **Opus info (ℹ️ 2)**:
+  - I6 — `TODO(M5): consolidate envelope unwrap into lib/envelope-unwrap.js` comment added near the duplicated `isEnvelopeShape` / `unwrapStrict`.
+  - I7 — `SOURCE_SPECS ↔ EXPECTED_SOURCES` coverage test inverted to bidirectional containment (previously tautological — would have passed even if `SOURCE_SPECS` silently dropped a tuple).
+
+Deferred (scope-resolved per anti-oscillation §4, mirror M3 Phase 3 INFO-2~5):
+- Full JSON Schema runtime validation (ajv) — M5 candidate.
+- `metrics-catalog.yaml` schema/linter — PR 3 candidate.
+- Cached env-var reads — minor, deferred.
+- `deep-review` review-report markdown frontmatter parsing — PR 2 (formatter introduces verdict_mix computation).
 
 ### Migration notes
 - M4 collector is a CONSUMER. No producer-side breaking changes in PR 1; downstream PRs (PR 2 aggregator + PR 3 OTel/monitor) build on this foundation.
