@@ -2,6 +2,46 @@
 
 # 변경 이력
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
+
+### 추가
+- **`lib/metrics-catalog.yaml`** — `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4 의 16개 suite-level 메트릭 카탈로그. M4-core 12개는 즉시 활성화, M4-deferred 4개는 `deferred_until: M5` / `M5.5` 표기와 함께 source 도달 전까지 `null` emit.
+- **`lib/suite-collector.js`** — legacy `lib/dashboard/collector.js` 가 다루지 않는 4개 source 를 envelope-aware 로 수집: `deep-review/recurring-findings`, `deep-evolve/evolve-insights`, `deep-wiki/index` (외부 `<wiki_root>/.wiki-meta/index.json`, deep-wiki layout 준수 — `options.wikiRoot` 인자 / `DEEP_WIKI_ROOT` env / project-local 폴백 순), NDJSON 이벤트 로그 3종 (`.deep-work/hooks.log.jsonl`, `.deep-evolve/hooks.log.jsonl`, `<wiki_root>/log.jsonl` — `.wiki-meta/` 가 아니라 vault root). `parent_run_id` chain 재구성, aggregator-pattern envelope (`harnessability-report`, `evolve-insights`, `index`) 은 schema-documented 계약에 따라 **child + parent 양쪽** 에서 제외.
+- **`lib/suite-constants.js`** — 6-month legacy fallback timer (`T+0 = 2026-05-07`, `T+0+6mo = 2026-11-07T00:00:00Z` **exclusive cutoff**), per-plugin envelope adoption ledger, `EXPECTED_SOURCES` 11 entries (envelope 8 + NDJSON 3), `PAYLOAD_REQUIRED_FIELDS` (per-kind required-key 리스트, authoritative payload schema mirror) 의 단일 진실원본.
+- 29 신규 테스트: envelope unwrap + identity-guard rejection + payload-shape-violation rejection + **payload required-field 검증** (`{}` 거절, partial-shape 는 missing field 리스트와 함께 거절) + chain reconstruction (resolved / unresolved / aggregator-as-child-제외 / **aggregator-as-parent-제외** / **non-string run_id 거절**) + missing-signal-ratio (envelope + NDJSON denominator) + NDJSON hook log parse (malformed line skip) + **readJsonDir parse-failure 전파** + `wikiRoot` 옵션 / env / 폴백 + **legacy `<wiki_root>/index.json` 거절** + 양방향 SOURCE_SPECS ↔ EXPECTED_SOURCES alignment + 6-month timer **exclusive-cutoff** boundary + PAYLOAD_REQUIRED_FIELDS coverage.
+
+### 변경
+- **`package.json` `test` 스크립트** 를 `node --test "lib/**/*.test.js"` 로 따옴표 wrap. 이전엔 `sh` flat-globbing 이 `lib/*.test.js` top-level 파일을 누락시키는 silent drop 발생.
+
+### Round 1 리뷰 대응 (PR #5 — 3-way Opus + Codex review + Codex adversarial)
+
+11 findings 모두 머지 전 반영:
+
+- **3-way 합의 (🔴 1)**: `readJsonDir` 가 `.deep-work/receipts/` 같은 dir-cardinality source 에서 malformed JSON 을 silent drop → `schema_failures_total` 미집계. `unparseable-json` / `directory-unreadable` / `broken-symlink` / `out-of-boundary-symlink` 실패를 절대경로와 함께 propagate.
+- **Codex P2 × 2 (🔴 2)**: 외부 wiki 경로 보정 (`skills/wiki-schema/wiki-schema.yaml` 준수): `index.json` 은 `<wiki_root>/.wiki-meta/index.json` (이전: `<wiki_root>/index.json` — 실제 존재하지 않음), `log.jsonl` 은 `<wiki_root>/log.jsonl` (이전: `<wiki_root>/.wiki-meta/log.jsonl` — 실제 존재하지 않음). 비대칭은 의도된 설계: `.wiki-meta/` 는 Obsidian graph 에서 숨김, `log.jsonl` 은 root 에서 scriptable.
+- **Codex adversarial HIGH (🔴 2)**:
+  1. `missing_signal_ratio` denominator 가 8 → 11 로 확장 — hook logs (deep-work, deep-evolve) + deep-wiki vault log 가 ratio 에 포함. hook log 전부 missing 인 프로젝트가 envelope-only ratio 뒤에 숨어 healthy 처럼 보이던 문제 해결.
+  2. Payload required-field validation layer 추가: 빈 `{}` payload + partial-shape payload (producer schema 의 required key 누락) → `missing-required-fields:<csv>` 로 거절되며 `schema_failures_total` 에 집계. Zero-dep, `scripts/validate-envelope-emit.js` 선례 미러. Full ajv-style schema-runtime validation 은 M5 후보.
+- **Opus warnings (🟡 5)**:
+  - W1 — aggregator-pattern envelope (`harnessability-report`, `evolve-insights`, `index`) 을 `reconstructChains` 의 `byRunId` map 에서도 제외. 이전엔 child 로만 제외, parent 로는 가능 → 완전성 silently inflation.
+  - W2 — `run_id` 인덱싱을 truthy-check 에서 `typeof === 'string' && length > 0` 으로 강화. `run_id = {nested: true}` / `[]` 같은 malformed envelope 의 parent map 오염 차단.
+  - W3 — 6-month timer 주석 재작성, exclusive-cutoff 의미론 + boundary 표 (2026-11-06T23:59:59Z → false, 2026-11-07T00:00:00Z → false, 2026-11-07T00:00:01Z → true) 명시.
+  - W4 — `cardinality: 'dir'` 의 permission error 와 missing 구분, `failures: [{path, reason}]` 신규 채널.
+  - W5 — NDJSON stream IO error handler 부착; `readNdjson` 이 `{events, missing, error}` 반환 → "파일 없음" vs "스트림 중간 실패" 구분.
+- **Opus info (ℹ️ 2)**:
+  - I6 — `TODO(M5): consolidate envelope unwrap into lib/envelope-unwrap.js` 주석 추가 (duplicated `isEnvelopeShape` / `unwrapStrict` 근처).
+  - I7 — `SOURCE_SPECS ↔ EXPECTED_SOURCES` coverage 테스트를 양방향 containment 로 반전 (이전엔 tautological — `SOURCE_SPECS` 가 silently drop 해도 통과).
+
+Deferred (scope-resolved, anti-oscillation §4 mirror M3 Phase 3 INFO-2~5):
+- ajv 기반 full JSON Schema runtime validation — M5 후보.
+- `metrics-catalog.yaml` schema/linter — PR 3 후보.
+- env-var cached read — minor, deferred.
+- `deep-review` review-report markdown frontmatter parsing — PR 2 (formatter 가 verdict_mix 도입 시).
+
+### 마이그레이션 노트
+- M4 collector 는 CONSUMER. PR 1 에는 producer-side breaking change 없음. PR 2 (aggregator) + PR 3 (OTel/monitor) 가 이 위에 쌓임.
+- `plugin.json.version` 은 M4 마지막 PR (3/3) merge 까지 1.2.0 유지. suite repo `marketplace.json` SHA bump 은 그 머지 이후 별도 suite-repo PR 에서 처리.
+
 ## [1.2.0] — 2026-05-07
 
 ### 변경

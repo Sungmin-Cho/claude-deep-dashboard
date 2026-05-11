@@ -1,0 +1,282 @@
+# Suite Telemetry Metric Catalog
+#
+# Spec: claude-deep-suite/docs/deep-suite-harness-roadmap.md §M4
+# Producer: deep-dashboard (this plugin)
+# Consumed by: lib/aggregator.js (computes), lib/formatter.js (renders)
+#
+# Schema convention (per metric entry):
+#   id          — fully-qualified metric name (`suite.<domain>.<measure>`)
+#   tier        — M4-core | M4-deferred
+#   deferred_until — milestone gating activation (only on M4-deferred)
+#   unit        — ratio | count | seconds | numeric | distribution
+#   description — one-line natural-language definition
+#   source      — array of { producer, kind, path_glob, schema_id }
+#                  (path_glob is project-root-relative; wiki_root uses external resolution)
+#   aggregation — formula in plain English (collector.js implements)
+#   null_when   — explicit conditions emitting null (vs not_applicable)
+#
+# Conventions:
+# - All M4-core metrics are computed against the envelope's `payload` after
+#   collector.js strict identity-guarded unwrap (producer/artifact_kind/schema.name).
+# - Envelope-schema-fail counts feed `suite.artifact.schema_failures_total` and
+#   `suite.dashboard.missing_signal_ratio` (defense-in-depth, handoff §4 lesson).
+# - M4-deferred sources are tracked here so the aggregator can flip null → value
+#   the moment M5 / M5.5 lands without code edits to this catalog (skeleton-only).
+# - The 6-month legacy fallback timer (`T+0+6mo = 2026-11-07`, T+0 = 2026-05-07)
+#   is hard-coded once in `lib/suite-constants.js`; this catalog does not repeat it.
+
+metric_catalog_version: "1.0"
+generated_for_milestone: "M4"
+catalog_id: "deep-dashboard.suite-telemetry"
+
+metrics:
+
+  # ────────────────────────────── M4-core (12) ──────────────────────────────
+
+  - id: suite.hooks.block_rate
+    tier: M4-core
+    unit: ratio
+    description: "Hook invocations blocked by hook scripts divided by total hook invocations across deep-work / deep-evolve / deep-wiki."
+    source:
+      - producer: deep-work
+        kind: hook-log
+        path_glob: ".deep-work/hooks.log.jsonl"
+        schema_id: null  # legacy newline-delimited log, not envelope-wrapped
+      - producer: deep-evolve
+        kind: hook-log
+        path_glob: ".deep-evolve/hooks.log.jsonl"
+        schema_id: null
+      - producer: deep-wiki
+        kind: hook-log
+        path_glob: ".deep-wiki/log.jsonl"
+        schema_id: null
+    aggregation: "sum(blocked events across sources) / sum(total hook events across sources). Events with `event` ∈ {hook-block, hook-deny} count as blocked."
+    null_when: "no hook log files exist OR total events = 0"
+
+  - id: suite.hooks.error_rate
+    tier: M4-core
+    unit: ratio
+    description: "Hook script internal-error rate (non-zero exit, stderr parse failure) across all plugin hook logs."
+    source:
+      - producer: deep-work
+        kind: hook-log
+        path_glob: ".deep-work/hooks.log.jsonl"
+        schema_id: null
+      - producer: deep-evolve
+        kind: hook-log
+        path_glob: ".deep-evolve/hooks.log.jsonl"
+        schema_id: null
+      - producer: deep-wiki
+        kind: hook-log
+        path_glob: ".deep-wiki/log.jsonl"
+        schema_id: null
+    aggregation: "sum(events where `event` ∈ {hook-error, hook-exception} OR `exit_code` ∉ {0, null}) / sum(total hook events)."
+    null_when: "no hook log files exist OR total events = 0"
+
+  - id: suite.artifact.freshness_seconds
+    tier: M4-core
+    unit: seconds
+    description: "Maximum age (seconds since now) of any envelope-wrapped artifact across the suite. Higher value = staler."
+    source:
+      - producer: deep-work
+        kind: session-receipt
+        path_glob: ".deep-work/session-receipt.json"
+        schema_id: "deep-work/session-receipt/v1.0"
+      - producer: deep-work
+        kind: slice-receipt
+        path_glob: ".deep-work/receipts/*.json"
+        schema_id: "deep-work/slice-receipt/v1.0"
+      - producer: deep-review
+        kind: recurring-findings
+        path_glob: ".deep-review/recurring-findings.json"
+        schema_id: "deep-review/recurring-findings/v1.0"
+      - producer: deep-docs
+        kind: last-scan
+        path_glob: ".deep-docs/last-scan.json"
+        schema_id: "deep-docs/last-scan/v1.0"
+      - producer: deep-evolve
+        kind: evolve-receipt
+        path_glob: ".deep-evolve/evolve-receipt.json"
+        schema_id: "deep-evolve/evolve-receipt/v1.0"
+      - producer: deep-evolve
+        kind: evolve-insights
+        path_glob: ".deep-evolve/evolve-insights.json"
+        schema_id: "deep-evolve/evolve-insights/v1.0"
+      - producer: deep-dashboard
+        kind: harnessability-report
+        path_glob: ".deep-dashboard/harnessability-report.json"
+        schema_id: "deep-dashboard/harnessability-report/v1.0"
+      - producer: deep-wiki
+        kind: index
+        path_glob: ".deep-wiki/index.json"  # plus external <wiki_root>/index.json resolution
+        schema_id: "deep-wiki/index/v1.0"
+    aggregation: "max(now - envelope.generated_at) in seconds over all envelopes that pass identity + schema validation."
+    null_when: "no envelope artifacts exist OR all envelopes fail validation"
+
+  - id: suite.artifact.schema_failures_total
+    tier: M4-core
+    unit: count
+    description: "Cumulative count of envelopes that failed identity-guard or payload-schema validation in this collector run."
+    source:
+      - producer: deep-dashboard
+        kind: collector-self
+        path_glob: null  # collector internal
+        schema_id: null
+    aggregation: "count of envelopes rejected during collector unwrap (identity-mismatch OR payload-shape-violation OR producer-schema-fail)."
+    null_when: "never null; emits 0 when no failures (count semantics)"
+
+  - id: suite.integrate.recommendation_accept_rate
+    tier: M4-core
+    unit: ratio
+    description: "Phase 5 Integrate recommendation acceptance rate from deep-work session receipts."
+    source:
+      - producer: deep-work
+        kind: session-receipt
+        path_glob: ".deep-work/session-receipt.json"
+        schema_id: "deep-work/session-receipt/v1.0"
+    aggregation: "sum(payload.integrate.accepted) / sum(payload.integrate.proposed) across session-receipts where integrate block present."
+    null_when: "no session-receipt with integrate block exists"
+
+  - id: suite.review.verdict_mix
+    tier: M4-core
+    unit: distribution
+    description: "Distribution of APPROVE / CONCERN / REQUEST_CHANGES verdicts across deep-review reports."
+    source:
+      - producer: deep-review
+        kind: review-report
+        path_glob: ".deep-review/reports/*-review.md"
+        schema_id: null  # frontmatter parsed, not JSON envelope
+      - producer: deep-review
+        kind: recurring-findings
+        path_glob: ".deep-review/recurring-findings.json"
+        schema_id: "deep-review/recurring-findings/v1.0"
+    aggregation: "{ APPROVE: n_a, CONCERN: n_c, REQUEST_CHANGES: n_r } where each is the count of reports whose frontmatter `verdict` field matches. recurring-findings provides cross-report dedupe context only."
+    null_when: "no .deep-review/reports/*-review.md files exist"
+
+  - id: suite.review.recurring_finding_count
+    tier: M4-core
+    unit: count
+    description: "Count of recurring findings (occurrences ≥ 2) tracked in deep-review recurring-findings.json."
+    source:
+      - producer: deep-review
+        kind: recurring-findings
+        path_glob: ".deep-review/recurring-findings.json"
+        schema_id: "deep-review/recurring-findings/v1.0"
+    aggregation: "count(payload.findings[].occurrences >= 2)."
+    null_when: "recurring-findings.json missing OR payload.findings empty"
+
+  - id: suite.wiki.auto_ingest_candidates_total
+    tier: M4-core
+    unit: count
+    description: "Cumulative SessionStart auto-ingest candidate detection count from deep-wiki log.jsonl."
+    source:
+      - producer: deep-wiki
+        kind: log
+        path_glob: ".deep-wiki/log.jsonl"
+        schema_id: null  # NDJSON event log
+      # Plus optional external <wiki_root>/log.jsonl when DEEP_WIKI_ROOT env set
+    aggregation: "count(line where parsed.event == 'auto-ingest-candidate' OR parsed.event == 'session-start-detect')."
+    null_when: "log.jsonl missing OR no matching events"
+
+  - id: suite.docs.auto_fix_accept_rate
+    tier: M4-core
+    unit: ratio
+    description: "deep-docs garden auto-fix acceptance rate (auto_fixable / total_issues)."
+    source:
+      - producer: deep-docs
+        kind: last-scan
+        path_glob: ".deep-docs/last-scan.json"
+        schema_id: "deep-docs/last-scan/v1.0"
+    aggregation: "payload.summary.auto_fixable / payload.summary.total_issues."
+    null_when: "last-scan.json missing OR payload.summary.total_issues == 0"
+
+  - id: suite.evolve.q_delta_per_epoch
+    tier: M4-core
+    unit: numeric
+    description: "Per-epoch quality delta from deep-evolve receipt: (current_score - baseline_score) / evaluation_epochs."
+    source:
+      - producer: deep-evolve
+        kind: evolve-receipt
+        path_glob: ".deep-evolve/evolve-receipt.json"
+        schema_id: "deep-evolve/evolve-receipt/v1.0"
+    aggregation: "(payload.score.current - payload.score.baseline) / max(payload.evaluation_epochs, 1)."
+    null_when: "evolve-receipt missing OR evaluation_epochs == 0 OR score.baseline/current missing"
+
+  - id: suite.dashboard.missing_signal_ratio
+    tier: M4-core
+    unit: ratio
+    description: "Fraction of expected sources that were missing, unreadable, or failed validation. Independent of M3 envelope adoption."
+    source:
+      - producer: deep-dashboard
+        kind: collector-self
+        path_glob: null
+        schema_id: null
+    aggregation: "count(sources_missing_or_invalid) / count(sources_expected). sources_expected = sum of unique (producer, kind) tuples across this catalog with M4-core tier."
+    null_when: "never null; emits 0.0 when all expected sources resolve cleanly"
+
+  - id: suite.cross_plugin.run_id_chain_completeness
+    tier: M4-core
+    unit: ratio
+    description: "Fraction of cross-plugin envelope chains (e.g., session-receipt → recurring-findings → evolve-receipt) where every link's parent_run_id resolves to an upstream envelope's run_id."
+    source:
+      - producer: deep-dashboard
+        kind: chain-reconstruction
+        path_glob: null  # computed from all envelopes in this run
+        schema_id: null
+    aggregation: "count(chains where every parent_run_id resolves) / count(chains discovered). A chain is discovered whenever an envelope has parent_run_id set. Aggregator-pattern envelopes (no parent_run_id by design — harnessability-report, evolve-insights, wiki/index) are excluded from denominator."
+    null_when: "no envelopes carry parent_run_id (e.g., greenfield project)"
+
+  # ────────────────────────── M4-deferred (4) ──────────────────────────────
+  # Emit { value: null, deferred_until: <milestone> } until source lands.
+
+  - id: suite.compaction.frequency
+    tier: M4-deferred
+    deferred_until: M5
+    unit: count
+    description: "Number of context compaction events per long-running session. Source: compaction-state.json (M5 deliverable in claude-deep-suite §M5 guides/context-management.md)."
+    source:
+      - producer: claude-code-harness  # M5 forward-compat producer name
+        kind: compaction-state
+        path_glob: ".claude/compaction-state.json"
+        schema_id: "compaction-state/v1.0"
+    aggregation: "count(payload.compaction_events) per session_id."
+    null_when: "M5 not yet delivered (compaction-state.json schema absent from suite repo)"
+
+  - id: suite.compaction.preserved_artifact_ratio
+    tier: M4-deferred
+    deferred_until: M5
+    unit: ratio
+    description: "Fraction of artifacts preserved across context compactions. Source: compaction-state.json `preserved_artifact_paths`."
+    source:
+      - producer: claude-code-harness
+        kind: compaction-state
+        path_glob: ".claude/compaction-state.json"
+        schema_id: "compaction-state/v1.0"
+    aggregation: "count(payload.preserved_artifact_paths after compaction) / count(payload.artifact_paths before compaction)."
+    null_when: "M5 not yet delivered"
+
+  - id: suite.handoff.roundtrip_success_rate
+    tier: M4-deferred
+    deferred_until: M5
+    unit: ratio
+    description: "Phase 5 ↔ deep-evolve handoff round-trip success rate. Source: handoff.json (M5 deliverable)."
+    source:
+      - producer: deep-work  # or deep-evolve, depending on M5 direction
+        kind: handoff
+        path_glob: ".deep-work/*/handoff.json"
+        schema_id: "handoff/v1.0"
+    aggregation: "count(handoffs with successful return handoff) / count(handoffs emitted)."
+    null_when: "M5 not yet delivered (handoff.schema.json absent from suite repo)"
+
+  - id: suite.tests.coverage_per_plugin
+    tier: M4-deferred
+    deferred_until: M5.5
+    unit: ratio
+    description: "Per-plugin test catalog coverage against the 8-item M5.5 standard test catalog. One value per plugin in the suite."
+    source:
+      - producer: deep-dashboard
+        kind: ci-status-aggregate
+        path_glob: null  # M5.5 CI status integration
+        schema_id: "test-coverage/v1.0"
+    aggregation: "for each plugin: count(passed catalog items) / 8."
+    null_when: "M5.5 not yet delivered (8-item catalog not finalized)"
