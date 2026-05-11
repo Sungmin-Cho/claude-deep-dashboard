@@ -53,6 +53,40 @@ discovery, flat+session merge no-double-count, hidden-dir skip, reverse
 handoff identity validation, aggregator-kind exclusion, and the happy-path
 fixture pair).
 
+### Round 2 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+- **C2 (Codex review P2 — security)** Symlink containment in
+  `readSessionGlob`: previously followed symlinks via `readJsonSafe` without
+  the realpath boundary check that `readJsonDir` enforces. A malicious
+  `.deep-work/<session>/handoff.json` symlinked outside the project root
+  could ingest forged JSON as a valid M5 envelope. Fix mirrors
+  `readJsonDir`'s containment check; out-of-boundary symlinks fail with
+  `out-of-boundary-symlink` reason. In-tree symlinks (atomic-swap pattern)
+  still honored.
+- **W2 (Codex adversarial MEDIUM)** `computeHandoffRoundtripSuccessRate`
+  tightened to enforce receiver semantics per guide §7. A child envelope
+  now must satisfy BOTH (a) `parent_run_id === handoff.run_id` AND (b)
+  `child.envelope.producer === handoff.payload.to.producer`. Previously
+  any non-aggregator child counted, allowing a same-sender follow-up
+  artifact to falsely mark the handoff as roundtripped.
+- **W3 (Codex P3 + Opus Info-2, 2-way)** `source_summary.handoff_producers`
+  and `compaction_producers` now filter to sources with non-empty
+  envelopes — empty sources (e.g., deep-evolve handoff source in a
+  project that only emits forward handoffs) no longer appear in the
+  drill-down.
+- **I5 (Opus Info-1)** Updated stale "// All 13 expected sources missing"
+  comment to "All 15" in `suite-collector.test.js`.
+- **I6 (Opus Info-3)** Added docstring note in `readSessionGlob` about
+  session-name convention (`<date>-<slug>` per long-run-handoff.md §4.1)
+  and the intentional skip for names colliding with flat-aggregation
+  dirnames.
+
+Test count: 201 → 209 (+8 round-2 tests: out-of-tree symlink rejection,
+broken symlink rejection, in-tree symlink allowed, unrelated-sender child
+rejection (W2 negative), receiver-produced child counting (W2 positive),
+missing payload.to defensive path, and 2 W3 symmetric tests for
+empty-source filtering on handoff + compaction).
+
 ### Added
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` extended with two envelope
   tuples (`deep-work / handoff` and `deep-work / compaction-state`), bringing

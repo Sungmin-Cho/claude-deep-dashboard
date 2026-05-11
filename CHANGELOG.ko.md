@@ -55,6 +55,37 @@ producer 표면과 정렬.
 handoff identity validation, aggregator-kind 제외, happy path fixture
 pair).
 
+### Round 2 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+- **C2 (Codex review P2 — security)** `readSessionGlob` 의 symlink 격리.
+  이전 구현은 `readJsonSafe` 로 symlink 를 따라가면서 `readJsonDir` 가
+  enforce 하는 realpath boundary check 를 누락. 악의적 `.deep-work/
+  <session>/handoff.json` symlink 가 프로젝트 root 외부를 가리키면 forged
+  JSON 을 valid M5 envelope 으로 ingest 가능. Fix 는 `readJsonDir` 패턴
+  미러; out-of-boundary symlink 은 `out-of-boundary-symlink` reason 으로
+  거절. in-tree symlink (atomic-swap 패턴) 은 계속 허용.
+- **W2 (Codex adversarial MEDIUM)** `computeHandoffRoundtripSuccessRate`
+  가 guide §7 의 receiver semantics 를 enforce 하도록 강화. child
+  envelope 이 (a) `parent_run_id === handoff.run_id` 그리고 (b)
+  `child.envelope.producer === handoff.payload.to.producer` 두 조건을
+  모두 만족해야 함. 이전에는 임의의 non-aggregator child 가 카운트되어,
+  sender 자신이 emit 한 follow-up artifact 가 handoff 를 falsely
+  roundtripped 로 marking 가능했음.
+- **W3 (Codex P3 + Opus Info-2, 2-way)** `source_summary.handoff_producers`
+  와 `compaction_producers` 가 non-empty envelopes 를 가진 source 만
+  필터링 — forward handoff 만 emit 하는 프로젝트에서 빈 deep-evolve
+  source 가 drill-down 에 등장하지 않음.
+- **I5 (Opus Info-1)** `suite-collector.test.js` 의 stale "// All 13
+  expected sources missing" 주석을 "All 15" 로 업데이트.
+- **I6 (Opus Info-3)** `readSessionGlob` 의 docstring 에 session 이름
+  convention (`<date>-<slug>`, long-run-handoff.md §4.1) 및 flat-aggregation
+  dirname 충돌 시 의도적 skip 명시.
+
+테스트 카운트: 201 → 209 (+8 round-2 테스트: out-of-tree symlink 거절,
+broken symlink 거절, in-tree symlink 허용, unrelated-sender child 거절
+(W2 negative), receiver-produced child 카운팅 (W2 positive), payload.to
+누락 defensive path, handoff + compaction 양쪽 W3 symmetric 테스트).
+
 ### 추가
 - **`lib/suite-constants.js`** — `EXPECTED_SOURCES` 에 envelope tuple 2개
   (`deep-work / handoff`, `deep-work / compaction-state`) 추가, 대시보드의
