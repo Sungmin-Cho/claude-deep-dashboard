@@ -2,6 +2,17 @@
 
 # 변경 이력
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
+
+### 추가
+- **`lib/aggregator.js`** — Suite metric aggregator. `collectSuite()` 결과를 입력으로 `lib/metrics-catalog.yaml` 16 metric 모두 emit: M4-core 12 (계산) + M4-deferred 4 (`null` + `deferred_until: M5` / `M5.5`). 각 metric 은 `{ value, unit, tier, source_summary }` 구조. `appendSnapshot()` 가 append-only `.deep-dashboard/suite-metrics.jsonl` 기록; `readRecentSnapshots(n)` 가 malformed line skip 후 최근 N records 반환.
+- **`lib/suite-formatter.js`** — `.deep-dashboard/suite-report.md` markdown 렌더러. 현재 snapshot 을 이전 JSONL record 와 비교, metric 별 trend (↑/↓/→) 출력. Distribution metric (e.g., `verdict_mix`) 은 `{ key=n, ... }` 컴팩트 literal; shape divergence 시 `?` fallback.
+- `.deep-review/reports/*-review.md` 의 `**Verdict**:` line 파서. APPROVE / CONCERN / REQUEST_CHANGES 토큰 카운트, ambiguity 시 severity precedence: `REQUEST_CHANGES > CONCERN > APPROVE`.
+- 38 신규 테스트 (`lib/aggregator.test.js` × 20, `lib/suite-formatter.test.js` × 18): 16 metric emission + greenfield-null 계약 + 12 per-metric 정확도 + div-by-zero 가드 + JSONL append-only round-trip + malformed line skip + trend arrows + ratio/seconds/count/numeric formatting + markdown rendering (sections, deferred-until, pipe-escaping) + file overwrite idempotency.
+
+### 마이그레이션 노트
+- `plugin.json.version` 은 1.2.0 유지. 1.3.0 final bump 은 PR 3.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
 
 ### 추가
