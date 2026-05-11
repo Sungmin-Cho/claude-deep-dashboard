@@ -2,6 +2,36 @@
 
 # 변경 이력
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
+
+### 추가
+- **`lib/aggregator.js`** — Suite metric aggregator. `collectSuite()` 결과를 입력으로 `lib/metrics-catalog.yaml` 16 metric 모두 emit: M4-core 12 (계산) + M4-deferred 4 (`null` + `deferred_until: M5` / `M5.5`). 각 metric 은 `{ value, unit, tier, source_summary }` 구조. `appendSnapshot()` 가 append-only `.deep-dashboard/suite-metrics.jsonl` 기록; `readRecentSnapshots(n)` 가 malformed line skip 후 최근 N records 반환.
+- **`lib/suite-formatter.js`** — `.deep-dashboard/suite-report.md` markdown 렌더러. 현재 snapshot 을 이전 JSONL record 와 비교, metric 별 trend (↑/↓/→) 출력. Distribution metric (e.g., `verdict_mix`) 은 `{ key=n, ... }` 컴팩트 literal; shape divergence 시 `?` fallback.
+- `.deep-review/reports/*-review.md` 의 `**Verdict**:` line 파서. APPROVE / CONCERN / REQUEST_CHANGES 토큰 카운트, ambiguity 시 severity precedence: `REQUEST_CHANGES > CONCERN > APPROVE`.
+- 38 신규 테스트 (`lib/aggregator.test.js` × 20, `lib/suite-formatter.test.js` × 18): 16 metric emission + greenfield-null 계약 + 12 per-metric 정확도 + div-by-zero 가드 + JSONL append-only round-trip + malformed line skip + trend arrows + ratio/seconds/count/numeric formatting + markdown rendering (sections, deferred-until, pipe-escaping) + file overwrite idempotency.
+
+### 마이그레이션 노트
+- `plugin.json.version` 은 1.2.0 유지. 1.3.0 final bump 은 PR 3.
+
+### Round 1 리뷰 대응 (PR #6 — 3-way Opus + Codex review + Codex adversarial)
+
+8 findings 모두 반영:
+
+- **3-way 합의 (🔴 1)**: `computeBlockRate` / `computeErrorRate` 가 deep-wiki vault `log.jsonl` (`kind === 'log'`, wiki ingest 이벤트) 의 non-hook 이벤트를 분모에 포함 → busy wiki log 가 hook rate 를 near-zero 로 희석. `kind === 'hook-log'` 만 필터링하도록 변경. 200/100 wiki 이벤트 + 2 hook 이벤트 회귀 테스트 2종 추가.
+- **Opus W1 🟡**: `parseVerdictFromMarkdown` substring poisoning — `**Verdict**: APPROVE — no CONCERN raised` 가 `CONCERN` 반환하던 버그. 3-tier 스캐너로 재작성: (1) verdict-line tail 에 leading-anchored `^<TOKEN>\b` (markdown emphasis `**APPROVE**` / italics / backtick 처리), (2) verdict line 내 severity-ordered word-boundaried 스캔 (table-cell 케이스), (3) whole-doc fallback. prose distractor + emphasis 회귀 3종 추가.
+- **Opus W2 🟡**: `trendArrow` 가 "stable" 과 "regressed-to-unknown" 을 `→` 로 혼동. 새 vocabulary: `↑` / `↓` / `→` (equal) / `·` (no baseline) / `?` (asymmetric null OR distribution shape divergence).
+- **Opus W3 🟡**: `appendSnapshot` docstring 을 `O_APPEND` atomicity 경계 (`PIPE_BUF` ≈ 4 KiB) + rotation 미제공으로 정직하게 정정. Cross-process advisory locking + rotation 은 M5 백로그 deferred.
+- **Opus W4 🟡**: `metrics-catalog.yaml` `suite.review.verdict_mix` 가 `recurring-findings` 를 2nd source 로 listing 했으나 aggregator 미사용 — catalog drift. 미사용 entry 제거; aggregation 설명을 실제 leading-anchored 파서에 맞춤.
+- **Opus I5 ℹ️**: catalog `suite.wiki.auto_ingest_candidates_total.null_when` 가 "no matching events" → null 이라 했으나 impl 은 `0` 반환 (count 시멘틱 — 파일 있음, 0 매치). catalog 를 "missing or unreadable" 으로 정정.
+- **Opus I6 ℹ️**: `computeDocsAutoFixAcceptRate` + `computeEvolveQDelta` 의 `envelopes[0]` 접근에 single-cardinality 계약 주석 추가, 다중 envelope 진화 시 sort-by-generated_at-desc 경로 명시.
+- **Opus I7 ℹ️**: catalog `suite.evolve.q_delta_per_epoch` 의 `max(epochs, 1)` (never-null) 공식이 impl 의 `epochs ≤ 0 → null` 과 불일치. catalog 를 impl 에 맞추고 이유 명시.
+
+Deferred:
+- I8 cosmetic (`renderValue` 정수-floored seconds, harmless).
+- I9 test gaps — concurrent appendSnapshot / unicode / very-large JSONL. M5 후보.
+
+테스트: 145 → 150 (+5 Round 1 회귀). All pass.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
 
 ### 추가

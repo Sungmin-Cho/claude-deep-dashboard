@@ -2,6 +2,36 @@
 
 # Changelog
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
+
+### Added
+- **`lib/aggregator.js`** — Suite metric aggregator. Consumes `collectSuite()` output and emits all 16 metrics from `lib/metrics-catalog.yaml`: 12 M4-core (computed) + 4 M4-deferred (`null` with `deferred_until: M5` / `M5.5` marker). Each metric carries `{ value, unit, tier, source_summary }`. `appendSnapshot()` writes to append-only `.deep-dashboard/suite-metrics.jsonl`; `readRecentSnapshots(n)` returns the latest N records skipping malformed lines.
+- **`lib/suite-formatter.js`** — Markdown renderer for `.deep-dashboard/suite-report.md`. Compares current snapshot against the previous JSONL record and emits trend arrows (↑/↓/→) per metric. Distribution metrics (e.g., `verdict_mix`) render as compact `{ key=n, ... }` literals; trend falls back to `?` on shape divergence.
+- Verdict parser for `.deep-review/reports/*-review.md` — scans for the `**Verdict**:` line and counts APPROVE / CONCERN / REQUEST_CHANGES tokens. Severity precedence on ambiguity: `REQUEST_CHANGES > CONCERN > APPROVE`.
+- 38 new tests (`lib/aggregator.test.js` × 20, `lib/suite-formatter.test.js` × 18) covering: all 16 metric emission + greenfield-null contract + per-metric correctness (block_rate / error_rate / freshness / integrate_accept / verdict_mix / recurring_findings / wiki_ingest / docs_auto_fix / evolve_q_delta) + division-by-zero guards + JSONL append-only round-trip + malformed-line skip + trend arrows (numeric ↑/↓/→ + distribution deep-equal + null-handling) + ratio/seconds/count/numeric formatting + markdown rendering (sections, deferred-until display, pipe-escaping) + file overwrite idempotency.
+
+### Migration notes
+- `plugin.json.version` still 1.2.0; final bump to 1.3.0 in PR 3.
+
+### Round 1 review fixes (PR #6 — 3-way Opus + Codex review + Codex adversarial)
+
+8 findings, all addressed:
+
+- **3-way agreement (🔴 1)**: `computeBlockRate` / `computeErrorRate` denominators included non-hook NDJSON events from the deep-wiki vault `log.jsonl` (`kind === 'log'`, carries wiki ingest events). A busy wiki log would dilute hook rates to near-zero. Filter added: only `kind === 'hook-log'` sources contribute. Two regression tests with 200/100 wiki events + 2 hook events confirm the wiki noise is excluded.
+- **Opus W1 🟡**: `parseVerdictFromMarkdown` substring poisoning — `**Verdict**: APPROVE — no CONCERN raised` previously returned `CONCERN`. Rewrote as a 3-tier scanner: (1) leading-anchored regex `^<TOKEN>\b` against the verdict-line tail (handles markdown emphasis `**APPROVE**`, italics `*APPROVE*`, backticks `\`APPROVE\``), (2) severity-ordered word-boundaried scan inside the verdict line (handles table-cell verdicts), (3) whole-doc fallback. Three regression tests for prose distractors + emphasis markers.
+- **Opus W2 🟡**: `trendArrow` collapsed "stable" and "regressed to unknown" into `→`. New arrow vocabulary: `↑` / `↓` / `→` (equal) / `·` (no baseline) / `?` (asymmetric null OR distribution shape divergence). Tests updated.
+- **Opus W3 🟡**: `appendSnapshot` docstring honest about `O_APPEND` atomicity boundary (`PIPE_BUF` ≈ 4 KiB) and rotation absence. Cross-process advisory locking + rotation knob deferred to M5 backlog. No code change — the docstring update is the fix.
+- **Opus W4 🟡**: `metrics-catalog.yaml` `suite.review.verdict_mix` listed `recurring-findings` as a 2nd source but the aggregator never consumed it — catalog drift. Removed the unused source entry; aggregation description now reflects the actual leading-anchored token parser.
+- **Opus I5 ℹ️**: `metrics-catalog.yaml` `suite.wiki.auto_ingest_candidates_total.null_when` previously said "no matching events" → null. Implementation returns `0` (count semantics — file scanned, 0 matches). Catalog now matches: "missing or unreadable" only.
+- **Opus I6 ℹ️**: `computeDocsAutoFixAcceptRate` + `computeEvolveQDelta` `envelopes[0]` access annotated with explicit single-cardinality contract comment, calling out the sort-by-generated_at-desc evolution path if collector ever emits multi-envelope.
+- **Opus I7 ℹ️**: `metrics-catalog.yaml` `suite.evolve.q_delta_per_epoch` aggregation formula previously said `max(epochs, 1)` (never-null) but impl returns `null` when `epochs ≤ 0`. Catalog now matches impl with reasoning ("avoids implying a per-epoch delta exists when no epochs ran").
+
+Deferred (out-of-scope per anti-oscillation §4):
+- I8 cosmetic (`renderValue` integer-floored seconds, harmless fractional handling).
+- I9 test gaps — concurrent appendSnapshot, unicode source_summary, very-large JSONL (>1 MB). M5 candidate.
+
+Tests: 145 → 150 (+5 Round 1 regression tests). All pass.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
 
 ### Added
