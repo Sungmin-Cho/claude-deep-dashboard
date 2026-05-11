@@ -2,6 +2,195 @@
 
 # 변경 이력
 
+## [1.3.1] — 2026-05-11 — M5 활성화: handoff + compaction-state 메트릭
+
+`claude-deep-suite` PR #11/#12/#13 (2026-05-11 머지)에서 `handoff` 와
+`compaction-state` payload 스키마가 ratified되어, M4-deferred 메트릭 4개 중
+3개를 활성화한다. 4번째 deferred 메트릭 (`suite.tests.coverage_per_plugin`)
+은 source (`ci-status-aggregate`) 가 M5 스키마 작업과 독립적이라 M5.5 까지
+유지된다.
+
+단일 PR, backward-compatible additions only.
+
+### Round 1 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+`/deep-review` 의 C1 (3-way 일치) + W1 (Opus 단독) 동일 PR 내 처리.
+Round 1 에서 dashboard 의 source 선언을 suite 가이드가 묘사하는 실제
+producer 표면과 정렬.
+
+- **C1 (3-way) — Handoff 메트릭 발견 계약**:
+  - `EXPECTED_SOURCES` 13 → 15: `(deep-evolve, handoff)` 와
+    `(deep-evolve, compaction-state)` 추가. Reverse handoff
+    (`handoff_kind: "evolve-to-deep-work"`) 은 `long-run-handoff.md` §4.3
+    에 따라 deep-evolve 가 emit; compaction-state 도 epoch boundary 에서
+    deep-evolve emit (`context-management.md` §6).
+  - 신규 collector cardinality `dir+session-glob`: 각 (producer, kind)
+    소스가 flat aggregation dir
+    (`.deep-<plugin>/<kind-plural>/*.json`) AND per-session subdir
+    (`.deep-<plugin>/<session>/<kind-singular>.json`) 양쪽 스캔. suite
+    문서에 등장하는 두 layout 을 producer 측 중복 emit 없이 흡수.
+  - `computeHandoffRoundtripSuccessRate` 와 compaction 메트릭 2개가
+    `(*, handoff)` / `(*, compaction-state)` 모든 소스를 cross-producer 로
+    집계.
+  - `*_producers` 배열을 `source_summary` 에 노출 (drill-down).
+  - end-to-end fixture pair: `handoff.fixture.json` +
+    `evolve-receipt-roundtrip.fixture.json` (`parent_run_id` 로 chain back)
+    + 신규 e2e 테스트 가 happy path 에서 `roundtrip_success_rate === 1.0`
+    검증.
+- **W1 (Opus) — Roundtrip 메트릭의 aggregator-kind 제외**:
+  - `AGGREGATOR_KINDS` 를 `suite-collector.js#_internal` 에서
+    `suite-constants.js` 의 top-level export 로 승격 (shared single
+    source of truth).
+  - `computeHandoffRoundtripSuccessRate` 가 `childrenByParent` 빌드 시
+    aggregator-kind envelope (`harnessability-report`, `evolve-insights`,
+    `index`) 을 skip — catalog 계약 ("downstream non-aggregator envelope's
+    parent_run_id chains back") 과 `reconstructChains` 의 기존 제외 로직
+    미러링.
+- **I1 — `missing_signal_ratio` source_summary**: literal `expected_total: 13`
+  을 `EXPECTED_SOURCES.length` 로 교체, 다음 활성화 사이클에서 magic
+  number drift 방지.
+
+테스트 카운트: 188 → 201 (+13 round-1 리뷰 테스트: per-session subdir
+발견, flat+session merge no-double-count, hidden-dir skip, reverse
+handoff identity validation, aggregator-kind 제외, happy path fixture
+pair).
+
+### Round 2 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+- **C2 (Codex review P2 — security)** `readSessionGlob` 의 symlink 격리.
+  이전 구현은 `readJsonSafe` 로 symlink 를 따라가면서 `readJsonDir` 가
+  enforce 하는 realpath boundary check 를 누락. 악의적 `.deep-work/
+  <session>/handoff.json` symlink 가 프로젝트 root 외부를 가리키면 forged
+  JSON 을 valid M5 envelope 으로 ingest 가능. Fix 는 `readJsonDir` 패턴
+  미러; out-of-boundary symlink 은 `out-of-boundary-symlink` reason 으로
+  거절. in-tree symlink (atomic-swap 패턴) 은 계속 허용.
+- **W2 (Codex adversarial MEDIUM)** `computeHandoffRoundtripSuccessRate`
+  가 guide §7 의 receiver semantics 를 enforce 하도록 강화. child
+  envelope 이 (a) `parent_run_id === handoff.run_id` 그리고 (b)
+  `child.envelope.producer === handoff.payload.to.producer` 두 조건을
+  모두 만족해야 함. 이전에는 임의의 non-aggregator child 가 카운트되어,
+  sender 자신이 emit 한 follow-up artifact 가 handoff 를 falsely
+  roundtripped 로 marking 가능했음.
+- **W3 (Codex P3 + Opus Info-2, 2-way)** `source_summary.handoff_producers`
+  와 `compaction_producers` 가 non-empty envelopes 를 가진 source 만
+  필터링 — forward handoff 만 emit 하는 프로젝트에서 빈 deep-evolve
+  source 가 drill-down 에 등장하지 않음.
+- **I5 (Opus Info-1)** `suite-collector.test.js` 의 stale "// All 13
+  expected sources missing" 주석을 "All 15" 로 업데이트.
+- **I6 (Opus Info-3)** `readSessionGlob` 의 docstring 에 session 이름
+  convention (`<date>-<slug>`, long-run-handoff.md §4.1) 및 flat-aggregation
+  dirname 충돌 시 의도적 skip 명시.
+
+테스트 카운트: 201 → 209 (+8 round-2 테스트: out-of-tree symlink 거절,
+broken symlink 거절, in-tree symlink 허용, unrelated-sender child 거절
+(W2 negative), receiver-produced child 카운팅 (W2 positive), payload.to
+누락 defensive path, handoff + compaction 양쪽 W3 symmetric 테스트).
+
+### Round 3 review 반영 (3-way: Opus + Codex review + Codex adversarial)
+
+- **C3 (Codex adversarial HIGH)** Reverse handoff 이 denominator 를
+  부풀림. `long-run-handoff.md` §7 에 따르면 reverse handoff (다른
+  handoff 의 `run_id` 로 chain 되는 handoff) 는 upstream handoff 의
+  receiver 측 success signal 이지, 자체 child 가 필요한 fresh
+  initiating handoff 이 아님. Round-2 는 모든 handoff 를 denominator
+  에 포함시켜 canonical happy path (forward + reverse) 가 50% 로
+  capping — operator dashboard 에 materially misleading.
+  Fix: denominator = INITIATING handoff 만 (parent_run_id 없거나
+  다른 handoff 의 run_id 로 chain 되지 않는 경우). `source_summary`
+  에 `handoffs_continuation` drill-down 노출. canonical happy path 가
+  이제 정확히 1.0 보고.
+- **W4 (Codex review P2)** `dir+session-glob` merge 가 flat +
+  per-session 항목을 `run_id` 기준 dedup 없이 concatenate. Producer 가
+  양 layout 에 같은 envelope 을 emit 시 (transitional period, accidental
+  double-write) `compaction.frequency`, `roundtrip` denominator,
+  `chains` index 모두 inflate.
+  Fix: source 내 `envelope.run_id` 기준 dedup. 충돌 시 flat 우선
+  (먼저 scan), 두 번째 instance 는 producer 디버깅용
+  `duplicate-run-id` failure 로 기록.
+- **I7 (Opus Info-1)** Metrics catalog 의 `description` + `aggregation`
+  문자열을 round-2 W2 receiver-filter + round-3 C3 initiating-handoff
+  denominator 반영. `null_when` 명확화.
+- **I8 (Opus Info-2)** `Object.freeze(new Set(...))` 은 Set mutation 에
+  no-op. freeze 제거 + convention 주석 추가; `const` reference 만으로
+  충분.
+- **I9 (Opus Info-3)** symlinked-SUBDIR 거절 테스트 추가 (round-2
+  symlinked-FILE 테스트의 sibling — 같은 방어, 다른 attack vector).
+- **I10 (Opus Info-4)** broken-symlink 테스트 주석 명확화 — 거절은
+  `pathExists` short-circuit (realpath check 아님) 에서 발생. 명시적
+  `failures.length === 0` assertion 추가.
+
+테스트 카운트: 209 → 214 (+5 net: 3 신규 C3 테스트 (multi-ack,
+new-task-via-reverse, all-continuations-degenerate); 1 W4 dedup 테스트;
+1 I9 symlinked-subdir 테스트; 2 기존 테스트가 새 C3 semantic 으로 업데이트).
+
+### 추가
+- **`lib/suite-constants.js`** — `EXPECTED_SOURCES` 에 envelope tuple 2개
+  (`deep-work / handoff`, `deep-work / compaction-state`) 추가, 대시보드의
+  `missing_signal_ratio` 분모를 11 → 13 으로 확장. `PAYLOAD_REQUIRED_FIELDS`
+  는 각 스키마의 `required[]` 를 1:1 미러링:
+  - `deep-work/handoff`: `schema_version`, `handoff_kind`, `from`, `to`,
+    `summary`, `next_action_brief`.
+  - `deep-work/compaction-state`: `schema_version`, `compacted_at`, `trigger`,
+    `preserved_artifact_paths`.
+- **`lib/suite-collector.js`** — `SOURCE_SPECS` 에 항목 2개 추가
+  (`.deep-work/handoffs/*.json`, `.deep-work/compaction-states/*.json`,
+  cardinality `dir`). 기존 `.deep-work/receipts/` flat-dir 패턴을 미러링.
+- **`lib/aggregator.js`** — compute 함수 3개 추가:
+  - `computeCompactionFrequency`: compaction-state envelope 총 개수;
+    `source_summary` 에 `unique_sessions` 노출 (세션별 drill-down).
+  - `computeCompactionPreservedArtifactRatio`: per-envelope ratio
+    `preserved / (preserved + discarded)` 의 평균.
+    `claude-deep-suite/guides/context-management.md` §5 에 따라
+    `discarded_artifact_paths` 누락 envelope 은 UNDEFINED (평균에서 제외),
+    full-reset (preserved + discarded 모두 빈 배열) 도 제외.
+  - `computeHandoffRoundtripSuccessRate`:
+    `claude-deep-suite/guides/long-run-handoff.md` §7 — 임의의 non-aggregator
+    envelope 의 `parent_run_id` 가 handoff 의 `run_id` 로 chain back 하면
+    round-trip 으로 카운트. reverse-handoff + downstream-receipt 양쪽 커버.
+- **`lib/metrics-catalog.yaml`** — M5 활성화 3건을 M4-deferred 블록에서
+  "M5-activated" 블록으로 이동; 각각 새 source path + suite-repo M5 스키마
+  를 가리키는 schema_id 부착.
+- **`test/fixtures/{handoff,compaction-state}.fixture.json`** — M5 스키마를
+  미러링한 canonical envelope-wrapped fixture; `lib/aggregator.test.js` 의
+  end-to-end activation 테스트에서 소비.
+- 신규 테스트 16개 (`suite-constants.test.js`, `suite-collector.test.js`,
+  `aggregator.test.js`): EXPECTED_SOURCES 확장, payload required field
+  reject 경로, per-metric 공식 (frequency / preserved ratio / roundtrip),
+  undefined-when-discarded 경로, full-reset 경로, reverse-handoff 경로,
+  fixture 기반 end-to-end 활성화 검증.
+
+### 변경
+- **`plugin.json.version`** + **`package.json.version`** 1.3.0 → 1.3.1.
+- **`lib/suite-formatter.js`** — section header (`## M4-core metrics (N)`,
+  `## M4-deferred metrics (N)`) 의 `N` 을 literal 이 아니라 snapshot 에서
+  derive. 향후 마일스톤 활성화 시 hard-coded 문자열을 재편집할 필요 없음.
+  sub-heading 텍스트 "M5 / M5.5" → "M5.5" 로 축약 (활성화 이후 상태 반영).
+- **`lib/aggregator.js`** — `M4_DEFERRED_METRICS` 상수를 4개 → 1개로 축소
+  (`suite.tests.coverage_per_plugin`, M5.5 만 잔존). M5 gated 3개는 실제
+  compute 함수로 라우팅; tier `M4-deferred` → `M4-core`.
+  `missing_signal_ratio` source_summary 의 `expected_total` 11 → 13.
+
+### 호환성 노트
+- Snapshot JSONL 형식 불변: 동일한 16개 metric ID 가 매 snapshot 에 등장.
+  활성화된 3개의 `tier` 필드는 `M4-deferred` → `M4-core` 로 변경, 해당
+  엔트리의 `deferred_until` 필드는 제거 — 이전 JSONL 레코드는 formatter
+  의 tier 분기를 통해 그대로 파싱.
+- Producer 측 채택은 독립적: 플러그인이 실제로 `handoff.json` /
+  `compaction-state.json` 을 emit 하기 전까지, 활성화된 3개 metric 은
+  `value: null` (greenfield 경로) 을 emit. 기존 consumer 의 값 형태에는
+  변화 없음.
+
+### 마이그레이션 노트
+- compaction / handoff 이벤트를 대시보드에 노출하려는 플러그인은
+  envelope-wrapped artifact 를 다음 경로에 emit 해야 한다:
+  - `.deep-work/handoffs/*.json` (artifact_kind = "handoff",
+    schema.name = "handoff", schema.version = "1.0")
+  - `.deep-work/compaction-states/*.json` (artifact_kind = "compaction-state",
+    schema.name = "compaction-state", schema.version = "1.0")
+  producer 채택 ledger 는 suite repo `docs/envelope-migration.md` §6 추적.
+
+---
+
 ## [1.3.0] — 2026-05-11 — M4 Suite Telemetry Aggregator
 
 M4 마일스톤 종결 (`claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4). 16 suite-level metric, 시계열 JSONL 누적, markdown trend report, 옵션 OTLP exporter, plugin monitors 의 의도적 "HOLD" 결정 (M4.5 재평가).

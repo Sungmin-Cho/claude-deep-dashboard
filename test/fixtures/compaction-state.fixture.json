@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "envelope": {
+    "producer": "deep-work",
+    "producer_version": "6.5.0",
+    "artifact_kind": "compaction-state",
+    "run_id": "01HX2VR9ABCDEFGHJKMNPQRSTW",
+    "parent_run_id": "01HX2VR8ABCDEFGHJKMNPQRSTV",
+    "generated_at": "2026-05-11T15:30:00Z",
+    "schema": { "name": "compaction-state", "version": "1.0" },
+    "git": { "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "branch": "main", "dirty": false },
+    "provenance": { "source_artifacts": [], "tool_versions": { "node": "20.11.0" } }
+  },
+  "payload": {
+    "schema_version": "1.0",
+    "compacted_at": "2026-05-11T15:30:00Z",
+    "trigger": "phase-transition",
+    "session_id": "2026-05-11-142500-jwt-middleware",
+    "preserved_artifact_paths": [
+      ".deep-work/2026-05-11-142500-jwt-middleware/research.md",
+      ".deep-work/2026-05-11-142500-jwt-middleware/plan.md"
+    ],
+    "discarded_artifact_paths": [
+      ".deep-work/2026-05-11-142500-jwt-middleware/explore/scratch.md",
+      ".deep-work/2026-05-11-142500-jwt-middleware/explore/notes.md"
+    ],
+    "pre_compaction_tokens": 84500,
+    "post_compaction_tokens": 22300,
+    "compaction_strategy": "key-artifacts-only"
+  }
+}

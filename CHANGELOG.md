@@ -2,6 +2,201 @@
 
 # Changelog
 
+## [1.3.1] — 2026-05-11 — M5 Activation: handoff + compaction-state metrics
+
+Activates 3 of the 4 M4-deferred metrics now that
+`claude-deep-suite` PRs #11/#12/#13 (merged 2026-05-11) have ratified the
+`handoff` and `compaction-state` payload schemas. The 4th deferred metric
+(`suite.tests.coverage_per_plugin`) stays deferred until M5.5 — its source
+(`ci-status-aggregate`) is independent of M5 schema work.
+
+Single PR, backward-compatible additions only.
+
+### Round 1 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+`/deep-review` C1 (3-way agreement) + W1 (Opus single) addressed in PR.
+Round 1 expanded the dashboard's source declaration to match the actual
+producer surface described in the suite guides.
+
+- **C1 (3-way) — Handoff metric discovery contract**:
+  - `EXPECTED_SOURCES` 13 → 15: added `(deep-evolve, handoff)` and
+    `(deep-evolve, compaction-state)`. Reverse handoffs
+    (`handoff_kind: "evolve-to-deep-work"`) are emitted by deep-evolve per
+    `long-run-handoff.md` §4.3; compaction-state is also a deep-evolve emit
+    at epoch boundaries per `context-management.md` §6.
+  - New collector cardinality `dir+session-glob`: each (producer, kind)
+    source now scans BOTH the flat aggregation dir
+    (`.deep-<plugin>/<kind-plural>/*.json`) AND per-session subdir
+    (`.deep-<plugin>/<session>/<kind-singular>.json`). Matches both layouts
+    that appear in suite docs without forcing producers to write duplicates.
+  - `computeHandoffRoundtripSuccessRate` and the two compaction metrics now
+    aggregate across all `(*, handoff)` / `(*, compaction-state)` sources.
+  - `computeCompactionFrequency` / `computeHandoffRoundtripSuccessRate`
+    `source_summary` carries a `*_producers` array for drill-down.
+  - End-to-end fixture pair: `handoff.fixture.json` +
+    `evolve-receipt-roundtrip.fixture.json` (chains back via `parent_run_id`)
+    + new e2e test asserts `roundtrip_success_rate === 1.0` on happy path.
+- **W1 (Opus) — Aggregator-kind exclusion in roundtrip metric**:
+  - `AGGREGATOR_KINDS` promoted from `suite-collector.js#_internal` to
+    `suite-constants.js` as a top-level export (shared single source of truth).
+  - `computeHandoffRoundtripSuccessRate` now skips aggregator-kind envelopes
+    (`harnessability-report`, `evolve-insights`, `index`) when building
+    `childrenByParent` — matches the catalog contract ("downstream
+    non-aggregator envelope's parent_run_id chains back") and mirrors
+    `reconstructChains`'s existing exclusion logic.
+- **I1 — `missing_signal_ratio` source_summary**: literal `expected_total: 13`
+  replaced with `EXPECTED_SOURCES.length` to prevent magic-number drift on
+  the next activation cycle.
+
+Test count: 188 → 201 (+13 round-1 review tests covering per-session subdir
+discovery, flat+session merge no-double-count, hidden-dir skip, reverse
+handoff identity validation, aggregator-kind exclusion, and the happy-path
+fixture pair).
+
+### Round 2 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+- **C2 (Codex review P2 — security)** Symlink containment in
+  `readSessionGlob`: previously followed symlinks via `readJsonSafe` without
+  the realpath boundary check that `readJsonDir` enforces. A malicious
+  `.deep-work/<session>/handoff.json` symlinked outside the project root
+  could ingest forged JSON as a valid M5 envelope. Fix mirrors
+  `readJsonDir`'s containment check; out-of-boundary symlinks fail with
+  `out-of-boundary-symlink` reason. In-tree symlinks (atomic-swap pattern)
+  still honored.
+- **W2 (Codex adversarial MEDIUM)** `computeHandoffRoundtripSuccessRate`
+  tightened to enforce receiver semantics per guide §7. A child envelope
+  now must satisfy BOTH (a) `parent_run_id === handoff.run_id` AND (b)
+  `child.envelope.producer === handoff.payload.to.producer`. Previously
+  any non-aggregator child counted, allowing a same-sender follow-up
+  artifact to falsely mark the handoff as roundtripped.
+- **W3 (Codex P3 + Opus Info-2, 2-way)** `source_summary.handoff_producers`
+  and `compaction_producers` now filter to sources with non-empty
+  envelopes — empty sources (e.g., deep-evolve handoff source in a
+  project that only emits forward handoffs) no longer appear in the
+  drill-down.
+- **I5 (Opus Info-1)** Updated stale "// All 13 expected sources missing"
+  comment to "All 15" in `suite-collector.test.js`.
+- **I6 (Opus Info-3)** Added docstring note in `readSessionGlob` about
+  session-name convention (`<date>-<slug>` per long-run-handoff.md §4.1)
+  and the intentional skip for names colliding with flat-aggregation
+  dirnames.
+
+Test count: 201 → 209 (+8 round-2 tests: out-of-tree symlink rejection,
+broken symlink rejection, in-tree symlink allowed, unrelated-sender child
+rejection (W2 negative), receiver-produced child counting (W2 positive),
+missing payload.to defensive path, and 2 W3 symmetric tests for
+empty-source filtering on handoff + compaction).
+
+### Round 3 review polish (3-way: Opus + Codex review + Codex adversarial)
+
+- **C3 (Codex adversarial HIGH)** Reverse handoff inflated denominator.
+  Per `long-run-handoff.md` §7, a reverse handoff (handoff whose
+  `parent_run_id` chains to another handoff's `run_id`) IS the receiver's
+  success signal for the upstream handoff — NOT a fresh initiating
+  handoff requiring its own child. Round-2 counted ALL handoffs in the
+  denominator, capping the canonical happy path (forward + reverse) at
+  50% — materially misleading for an operator dashboard.
+  Fix: denominator = INITIATING handoffs only (parent_run_id absent OR
+  not chaining to another handoff's run_id). `source_summary` now exposes
+  `handoffs_continuation` for drill-down. The canonical happy path now
+  correctly reports 1.0.
+- **W4 (Codex review P2)** `dir+session-glob` merge concatenated flat +
+  per-session entries without dedup by `run_id`. A producer writing the
+  same envelope to both layouts (transitional period, accidental
+  double-write) would inflate `compaction.frequency`, the `roundtrip`
+  denominator, and the `chains` index.
+  Fix: dedup by `envelope.run_id` within the merged source result. Flat
+  entries win on collision (scanned first); the second instance is
+  recorded as a `duplicate-run-id` failure for producer-side debugging.
+- **I7 (Opus Info-1)** Metrics catalog `description` + `aggregation`
+  strings updated to reflect the round-2 W2 receiver-filter AND the
+  round-3 C3 initiating-handoff denominator. `null_when` clarified.
+- **I8 (Opus Info-2)** `Object.freeze(new Set(...))` is a no-op for Set
+  mutation methods. Dropped the freeze with a comment explaining the
+  convention; `const` reference alone is sufficient.
+- **I9 (Opus Info-3)** Added a symlinked-SUBDIR rejection test (sibling
+  to the round-2 symlinked-FILE test) — same defense, different attack
+  vector.
+- **I10 (Opus Info-4)** Broken-symlink test comment clarified — rejection
+  happens at the `pathExists` short-circuit, not the realpath check.
+  Added explicit `failures.length === 0` assertion.
+
+Test count: 209 → 214 (+5 net: 3 new C3 tests for multi-ack, new-task-via-reverse,
+all-continuations-degenerate; 1 W4 dedup test; 1 I9 symlinked-subdir test;
+2 existing tests updated for the new C3 semantic).
+
+### Added
+- **`lib/suite-constants.js`** — `EXPECTED_SOURCES` extended with two envelope
+  tuples (`deep-work / handoff` and `deep-work / compaction-state`), bringing
+  the dashboard's `missing_signal_ratio` denominator from 11 → 13.
+  `PAYLOAD_REQUIRED_FIELDS` gains 1:1 mirrors of each schema's `required[]`:
+  - `deep-work/handoff`: `schema_version`, `handoff_kind`, `from`, `to`,
+    `summary`, `next_action_brief`.
+  - `deep-work/compaction-state`: `schema_version`, `compacted_at`, `trigger`,
+    `preserved_artifact_paths`.
+- **`lib/suite-collector.js`** — Two new `SOURCE_SPECS` entries scanning
+  `.deep-work/handoffs/*.json` and `.deep-work/compaction-states/*.json`
+  with `cardinality: 'dir'` (mirrors the existing `.deep-work/receipts/`
+  flat-dir pattern for slice receipts).
+- **`lib/aggregator.js`** — Three new compute functions:
+  - `computeCompactionFrequency`: total compaction-state envelope count;
+    `source_summary` surfaces `unique_sessions` for per-session drill-down.
+  - `computeCompactionPreservedArtifactRatio`: mean per-envelope ratio
+    `preserved / (preserved + discarded)`. Per
+    `claude-deep-suite/guides/context-management.md` §5: envelopes that omit
+    `discarded_artifact_paths` contribute UNDEFINED (excluded from the mean),
+    and empty-preserved + empty-discarded (full-reset) is also excluded.
+  - `computeHandoffRoundtripSuccessRate`: per
+    `claude-deep-suite/guides/long-run-handoff.md` §7 — a handoff round-trips
+    when any non-aggregator envelope's `parent_run_id` chains back to the
+    handoff's `run_id`. Covers reverse-handoff and downstream-receipt cases.
+- **`lib/metrics-catalog.yaml`** — The 3 M5-activated entries moved from the
+  M4-deferred block to a new "M5-activated" block, each carrying the new
+  source path + schema_id pointing at the suite-repo M5 schemas.
+- **`test/fixtures/{handoff,compaction-state}.fixture.json`** — Canonical
+  envelope-wrapped fixtures mirroring the M5 schemas; consumed by the
+  end-to-end activation test in `lib/aggregator.test.js`.
+- 16 new tests (across `suite-constants.test.js`, `suite-collector.test.js`,
+  `aggregator.test.js`) covering EXPECTED_SOURCES extension, payload required
+  field rejection paths, per-metric formula correctness (frequency / preserved
+  ratio / roundtrip rate), undefined-when-discarded path, full-reset path,
+  reverse-handoff path, and fixture-driven end-to-end populate.
+
+### Changed
+- **`plugin.json.version`** + **`package.json.version`** bumped 1.3.0 → 1.3.1.
+- **`lib/suite-formatter.js`** — Section count headers (`## M4-core metrics (N)`,
+  `## M4-deferred metrics (N)`) now derive `N` from the snapshot rather than
+  a literal, so the next milestone's activation lands without re-editing
+  hard-coded strings. Sub-heading text simplified from "M5 / M5.5" to "M5.5"
+  to reflect post-activation state.
+- **`lib/aggregator.js`** — `M4_DEFERRED_METRICS` constant trimmed from 4
+  entries to 1 (`suite.tests.coverage_per_plugin`, M5.5). The 3 M5-gated
+  metrics now route through real compute functions; their tier flipped to
+  `M4-core`. `missing_signal_ratio` source_summary's `expected_total`
+  updated 11 → 13.
+
+### Backward-compatibility notes
+- Snapshot JSONL shape unchanged: the same 16 metric IDs appear in every
+  snapshot. The 3 newly-activated metrics' `tier` field changes from
+  `M4-deferred` to `M4-core` and the `deferred_until` field is dropped on
+  those entries — old JSONL records continue to parse cleanly via the
+  formatter's tier-based switch.
+- Producer-side adoption is independent: until a plugin actually writes
+  `handoff.json` / `compaction-state.json`, the 3 activated metrics emit
+  `value: null` (greenfield path). Existing consumers see no value-shape
+  change.
+
+### Migration notes
+- Plugins that want their compaction or handoff events surfaced on the
+  dashboard SHOULD emit envelope-wrapped artifacts under
+  `.deep-work/handoffs/*.json` (artifact_kind = "handoff", schema.name =
+  "handoff", schema.version = "1.0") and `.deep-work/compaction-states/*.json`
+  (artifact_kind = "compaction-state", schema.name = "compaction-state",
+  schema.version = "1.0"). The producer-side adoption ledger is tracked in
+  the suite repo's `docs/envelope-migration.md` §6.
+
+---
+
 ## [1.3.0] — 2026-05-11 — M4 Suite Telemetry Aggregator
 
 Closes M4 milestone (cf. `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4). 16 suite-level metrics, time-series JSONL accumulation, markdown trend report, optional OTLP exporter, and a deliberate "HOLD" decision on plugin monitors (revisit in M4.5).
