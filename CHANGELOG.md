@@ -2,6 +2,88 @@
 
 # Changelog
 
+## [1.3.1] — 2026-05-11 — M5 Activation: handoff + compaction-state metrics
+
+Activates 3 of the 4 M4-deferred metrics now that
+`claude-deep-suite` PRs #11/#12/#13 (merged 2026-05-11) have ratified the
+`handoff` and `compaction-state` payload schemas. The 4th deferred metric
+(`suite.tests.coverage_per_plugin`) stays deferred until M5.5 — its source
+(`ci-status-aggregate`) is independent of M5 schema work.
+
+Single PR, backward-compatible additions only.
+
+### Added
+- **`lib/suite-constants.js`** — `EXPECTED_SOURCES` extended with two envelope
+  tuples (`deep-work / handoff` and `deep-work / compaction-state`), bringing
+  the dashboard's `missing_signal_ratio` denominator from 11 → 13.
+  `PAYLOAD_REQUIRED_FIELDS` gains 1:1 mirrors of each schema's `required[]`:
+  - `deep-work/handoff`: `schema_version`, `handoff_kind`, `from`, `to`,
+    `summary`, `next_action_brief`.
+  - `deep-work/compaction-state`: `schema_version`, `compacted_at`, `trigger`,
+    `preserved_artifact_paths`.
+- **`lib/suite-collector.js`** — Two new `SOURCE_SPECS` entries scanning
+  `.deep-work/handoffs/*.json` and `.deep-work/compaction-states/*.json`
+  with `cardinality: 'dir'` (mirrors the existing `.deep-work/receipts/`
+  flat-dir pattern for slice receipts).
+- **`lib/aggregator.js`** — Three new compute functions:
+  - `computeCompactionFrequency`: total compaction-state envelope count;
+    `source_summary` surfaces `unique_sessions` for per-session drill-down.
+  - `computeCompactionPreservedArtifactRatio`: mean per-envelope ratio
+    `preserved / (preserved + discarded)`. Per
+    `claude-deep-suite/guides/context-management.md` §5: envelopes that omit
+    `discarded_artifact_paths` contribute UNDEFINED (excluded from the mean),
+    and empty-preserved + empty-discarded (full-reset) is also excluded.
+  - `computeHandoffRoundtripSuccessRate`: per
+    `claude-deep-suite/guides/long-run-handoff.md` §7 — a handoff round-trips
+    when any non-aggregator envelope's `parent_run_id` chains back to the
+    handoff's `run_id`. Covers reverse-handoff and downstream-receipt cases.
+- **`lib/metrics-catalog.yaml`** — The 3 M5-activated entries moved from the
+  M4-deferred block to a new "M5-activated" block, each carrying the new
+  source path + schema_id pointing at the suite-repo M5 schemas.
+- **`test/fixtures/{handoff,compaction-state}.fixture.json`** — Canonical
+  envelope-wrapped fixtures mirroring the M5 schemas; consumed by the
+  end-to-end activation test in `lib/aggregator.test.js`.
+- 16 new tests (across `suite-constants.test.js`, `suite-collector.test.js`,
+  `aggregator.test.js`) covering EXPECTED_SOURCES extension, payload required
+  field rejection paths, per-metric formula correctness (frequency / preserved
+  ratio / roundtrip rate), undefined-when-discarded path, full-reset path,
+  reverse-handoff path, and fixture-driven end-to-end populate.
+
+### Changed
+- **`plugin.json.version`** + **`package.json.version`** bumped 1.3.0 → 1.3.1.
+- **`lib/suite-formatter.js`** — Section count headers (`## M4-core metrics (N)`,
+  `## M4-deferred metrics (N)`) now derive `N` from the snapshot rather than
+  a literal, so the next milestone's activation lands without re-editing
+  hard-coded strings. Sub-heading text simplified from "M5 / M5.5" to "M5.5"
+  to reflect post-activation state.
+- **`lib/aggregator.js`** — `M4_DEFERRED_METRICS` constant trimmed from 4
+  entries to 1 (`suite.tests.coverage_per_plugin`, M5.5). The 3 M5-gated
+  metrics now route through real compute functions; their tier flipped to
+  `M4-core`. `missing_signal_ratio` source_summary's `expected_total`
+  updated 11 → 13.
+
+### Backward-compatibility notes
+- Snapshot JSONL shape unchanged: the same 16 metric IDs appear in every
+  snapshot. The 3 newly-activated metrics' `tier` field changes from
+  `M4-deferred` to `M4-core` and the `deferred_until` field is dropped on
+  those entries — old JSONL records continue to parse cleanly via the
+  formatter's tier-based switch.
+- Producer-side adoption is independent: until a plugin actually writes
+  `handoff.json` / `compaction-state.json`, the 3 activated metrics emit
+  `value: null` (greenfield path). Existing consumers see no value-shape
+  change.
+
+### Migration notes
+- Plugins that want their compaction or handoff events surfaced on the
+  dashboard SHOULD emit envelope-wrapped artifacts under
+  `.deep-work/handoffs/*.json` (artifact_kind = "handoff", schema.name =
+  "handoff", schema.version = "1.0") and `.deep-work/compaction-states/*.json`
+  (artifact_kind = "compaction-state", schema.name = "compaction-state",
+  schema.version = "1.0"). The producer-side adoption ledger is tracked in
+  the suite repo's `docs/envelope-migration.md` §6.
+
+---
+
 ## [1.3.0] — 2026-05-11 — M4 Suite Telemetry Aggregator
 
 Closes M4 milestone (cf. `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M4). 16 suite-level metrics, time-series JSONL accumulation, markdown trend report, optional OTLP exporter, and a deliberate "HOLD" decision on plugin monitors (revisit in M4.5).

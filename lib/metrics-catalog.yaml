@@ -221,47 +221,50 @@ metrics:
     aggregation: "count(chains where every parent_run_id resolves) / count(chains discovered). A chain is discovered whenever an envelope has parent_run_id set. Aggregator-pattern envelopes (no parent_run_id by design — harnessability-report, evolve-insights, wiki/index) are excluded from denominator."
     null_when: "no envelopes carry parent_run_id (e.g., greenfield project)"
 
-  # ────────────────────────── M4-deferred (4) ──────────────────────────────
-  # Emit { value: null, deferred_until: <milestone> } until source lands.
+  # ────────────────────────── M5-activated (3) ────────────────────────────
+  # Promoted from M4-deferred → M4-core on 2026-05-11 once
+  # claude-deep-suite PRs #12/#13 ratified the upstream schemas
+  # (schemas/handoff.schema.json + schemas/compaction-state.schema.json,
+  # both schema_version "1.0", artifact_kind matches schema.name).
 
   - id: suite.compaction.frequency
-    tier: M4-deferred
-    deferred_until: M5
+    tier: M4-core
     unit: count
-    description: "Number of context compaction events per long-running session. Source: compaction-state.json (M5 deliverable in claude-deep-suite §M5 guides/context-management.md)."
+    description: "Total count of compaction-state envelopes observed across long-running sessions. Source: claude-deep-suite/schemas/compaction-state.schema.json (artifact_kind=compaction-state, schema_version 1.0)."
     source:
-      - producer: claude-code-harness  # M5 forward-compat producer name
+      - producer: deep-work
         kind: compaction-state
-        path_glob: ".claude/compaction-state.json"
-        schema_id: "compaction-state/v1.0"
-    aggregation: "count(payload.compaction_events) per session_id."
-    null_when: "M5 not yet delivered (compaction-state.json schema absent from suite repo)"
+        path_glob: ".deep-work/compaction-states/*.json"
+        schema_id: "deep-suite/compaction-state/v1.0"
+    aggregation: "count(compaction-state envelopes). source_summary carries unique_sessions for per-session drill-down (matches the guide's per-session intent)."
+    null_when: "no compaction-state envelopes present"
 
   - id: suite.compaction.preserved_artifact_ratio
-    tier: M4-deferred
-    deferred_until: M5
+    tier: M4-core
     unit: ratio
-    description: "Fraction of artifacts preserved across context compactions. Source: compaction-state.json `preserved_artifact_paths`."
+    description: "Mean preserved-artifact ratio across compaction events. Source: claude-deep-suite/schemas/compaction-state.schema.json (preserved_artifact_paths / discarded_artifact_paths)."
     source:
-      - producer: claude-code-harness
+      - producer: deep-work
         kind: compaction-state
-        path_glob: ".claude/compaction-state.json"
-        schema_id: "compaction-state/v1.0"
-    aggregation: "count(payload.preserved_artifact_paths after compaction) / count(payload.artifact_paths before compaction)."
-    null_when: "M5 not yet delivered"
+        path_glob: ".deep-work/compaction-states/*.json"
+        schema_id: "deep-suite/compaction-state/v1.0"
+    aggregation: "mean over compaction-state envelopes of `len(preserved_artifact_paths) / (len(preserved_artifact_paths) + len(discarded_artifact_paths))`. Per claude-deep-suite/guides/context-management.md §5: envelopes that omit discarded_artifact_paths contribute UNDEFINED (not zero) and are excluded from the mean. Full-reset envelopes (both arrays empty) are also excluded — avoids a misleading 0/0 → 0 reading."
+    null_when: "no compaction-state envelope provides both preserved + discarded paths"
 
   - id: suite.handoff.roundtrip_success_rate
-    tier: M4-deferred
-    deferred_until: M5
+    tier: M4-core
     unit: ratio
-    description: "Phase 5 ↔ deep-evolve handoff round-trip success rate. Source: handoff.json (M5 deliverable)."
+    description: "Fraction of handoff envelopes that round-tripped — i.e., a downstream non-aggregator envelope's parent_run_id chains back to the handoff's run_id. Source: claude-deep-suite/schemas/handoff.schema.json (artifact_kind=handoff)."
     source:
-      - producer: deep-work  # or deep-evolve, depending on M5 direction
+      - producer: deep-work
         kind: handoff
-        path_glob: ".deep-work/*/handoff.json"
-        schema_id: "handoff/v1.0"
-    aggregation: "count(handoffs with successful return handoff) / count(handoffs emitted)."
-    null_when: "M5 not yet delivered (handoff.schema.json absent from suite repo)"
+        path_glob: ".deep-work/handoffs/*.json"
+        schema_id: "deep-suite/handoff/v1.0"
+    aggregation: "count(handoff envelopes whose run_id appears as a parent_run_id of any other non-aggregator envelope) / count(handoff envelopes). Covers reverse handoff (evolve-to-deep-work) + downstream receipt (evolve-receipt) cases per claude-deep-suite/guides/long-run-handoff.md §7."
+    null_when: "no handoff envelopes present"
+
+  # ────────────────────────── M4-deferred (1) ──────────────────────────────
+  # Emit { value: null, deferred_until: <milestone> } until source lands.
 
   - id: suite.tests.coverage_per_plugin
     tier: M4-deferred
