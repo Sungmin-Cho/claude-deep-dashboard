@@ -2,6 +2,17 @@
 
 # Changelog
 
+## [Unreleased] — M4 Suite Telemetry Aggregator (PR 2/3)
+
+### Added
+- **`lib/aggregator.js`** — Suite metric aggregator. Consumes `collectSuite()` output and emits all 16 metrics from `lib/metrics-catalog.yaml`: 12 M4-core (computed) + 4 M4-deferred (`null` with `deferred_until: M5` / `M5.5` marker). Each metric carries `{ value, unit, tier, source_summary }`. `appendSnapshot()` writes to append-only `.deep-dashboard/suite-metrics.jsonl`; `readRecentSnapshots(n)` returns the latest N records skipping malformed lines.
+- **`lib/suite-formatter.js`** — Markdown renderer for `.deep-dashboard/suite-report.md`. Compares current snapshot against the previous JSONL record and emits trend arrows (↑/↓/→) per metric. Distribution metrics (e.g., `verdict_mix`) render as compact `{ key=n, ... }` literals; trend falls back to `?` on shape divergence.
+- Verdict parser for `.deep-review/reports/*-review.md` — scans for the `**Verdict**:` line and counts APPROVE / CONCERN / REQUEST_CHANGES tokens. Severity precedence on ambiguity: `REQUEST_CHANGES > CONCERN > APPROVE`.
+- 38 new tests (`lib/aggregator.test.js` × 20, `lib/suite-formatter.test.js` × 18) covering: all 16 metric emission + greenfield-null contract + per-metric correctness (block_rate / error_rate / freshness / integrate_accept / verdict_mix / recurring_findings / wiki_ingest / docs_auto_fix / evolve_q_delta) + division-by-zero guards + JSONL append-only round-trip + malformed-line skip + trend arrows (numeric ↑/↓/→ + distribution deep-equal + null-handling) + ratio/seconds/count/numeric formatting + markdown rendering (sections, deferred-until display, pipe-escaping) + file overwrite idempotency.
+
+### Migration notes
+- `plugin.json.version` still 1.2.0; final bump to 1.3.0 in PR 3.
+
 ## [Unreleased] — M4 Suite Telemetry Aggregator (PR 1/3)
 
 ### Added
