@@ -3,7 +3,7 @@
   "schema_version": "1.0",
   "envelope": {
     "producer": "deep-dashboard",
-    "producer_version": "1.2.0",
+    "producer_version": "1.3.2",
     "artifact_kind": "harnessability-report",
     "run_id": "01KR0J9PEM6E3K8H7XW2QFNB4M",
     "generated_at": "2026-05-07T10:00:00Z",

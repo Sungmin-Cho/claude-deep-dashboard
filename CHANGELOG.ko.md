@@ -2,6 +2,83 @@
 
 # 변경 이력
 
+## [1.3.2] — 2026-05-12 — M5.5 활성화: per-plugin 테스트 카탈로그 커버리지
+
+마지막 M4-deferred 메트릭을 활성화한다. 이 릴리스로 **`lib/metrics-catalog.yaml`
+의 16개 메트릭 모두 M4-core** 가 되며, `M4_DEFERRED_METRICS` slot 은 향후
+마일스톤 대비 forward-compat 자리로만 유지된다 (현재 비어있음).
+
+이 릴리스는 `claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M5.5
+수락 기준의 마지막 unchecked 항목을 닫는다.
+
+### Added
+
+- **`suite.tests.coverage_per_plugin` 메트릭** (M5.5-activated, M4-deferred
+  에서 승격). 8-item M5.5 표준 테스트 카탈로그 대비 per-plugin
+  `{ covered, expected, ratio, tests }` 분포를 emit. 카탈로그 미참여
+  plugin (현 8-item 카탈로그에서는 deep-docs) 은 value map 에서 omit 되고
+  `source_summary.plugins_unparticipating` 로 transparency 확보.
+- **`lib/test-catalog-manifest.json`** — dashboard-internal manifest, 메트릭의
+  single source of truth. `claude-deep-suite docs/test-catalog.md` §1-§8 과
+  1:1 mirror. suite repo 카탈로그 변경 시 lockstep 으로 수동 갱신
+  (`suite-constants.js` 의 `ADOPTION_LEDGER` 정책 미러). 최초 snapshot:
+  2026-05-12 EOD-2 의 8/8 done 상태 (suite PR #20 `62610c9c` + #21 `d0dabc9f`).
+- `lib/test-catalog-manifest.test.js` — manifest schema + invariant 검증 (6
+  테스트). 문서화된 contract drift 차단: 8 entries, 유일한 id 1..8, 알려진
+  plugin slug, `done|pending|failing` status.
+
+### Fixed
+
+- `tests/fixtures/sample-harnessability-report.json`:
+  `envelope.producer_version` 가 `plugin.json.version` 과 일치하도록 bump.
+  M3 envelope 채택 이후 `1.2.0` 으로 stale 상태였음 — 이전 버전 bump 들이
+  `npm run validate:envelope` 를 release gate 로 돌리지 않아 드리프트가
+  잠복했고, 본 release 가 validator 를 실행하면서 표면화됨. Fixture 가 이제
+  `scripts/validate-envelope-emit.js#L120` 의 single-source-of-truth
+  contract 와 일치.
+
+### Changed
+
+- `lib/metrics-catalog.yaml`: `suite.tests.coverage_per_plugin` 가
+  `M4-deferred (1)` 블록 → 신규 `M5.5-activated (1)` 블록으로 이동. Tier
+  `M4-deferred` → `M4-core`, unit `ratio` → `distribution`, source kind
+  `ci-status-aggregate` → `test-catalog-manifest`. Aggregation formula 가
+  uniform `/8` → per-plugin participation-aware `/expected per plugin` 로
+  갱신.
+- `lib/aggregator.js`: `M4_DEFERRED_METRICS` 빈 객체 (forward-compat slot
+  유지). 신규 `computeTestsCoveragePerPlugin()` 함수 `_internal` 로 export.
+- `lib/suite-formatter.js`: distribution renderer 가 per-plugin ratio cell
+  을 inline (`deep-work=100%`, …) 으로 렌더 — `[object Object]` 누수 방지.
+  비어있는 M4-deferred 섹션은 report 에서 omit; 향후 마일스톤이 새 deferred
+  metric 등록 시 자동 재출현.
+
+### Tests
+
+- +19 테스트 (manifest schema 6 + coverage_per_plugin computer 9 + formatter
+  distribution rendering 4). Total: 220 → 239.
+
+### Migration / 호환성
+
+- **Producer plugin 변경 불필요.** 새 메트릭은 dashboard-internal
+  (`producer: deep-dashboard, kind: test-catalog-manifest`). 다른 플러그인은
+  새로운 emit 의무 없음.
+- **Manifest sync 정책** (`suite-constants.js` 의 `ADOPTION_LEDGER` 와 유사):
+  `claude-deep-suite docs/test-catalog.md` 가 테스트 add / remove / status
+  변경 시, 다음 dashboard 릴리스에서 `lib/test-catalog-manifest.json` 동시
+  갱신 + CHANGELOG 명시. CI 가 drift 검증하지 않음 — manifest 는 수동
+  리뷰 타임 체크.
+
+### 마일스톤 상태
+
+- **M5.5 수락 기준** (claude-deep-suite): **CLOSED** — 8 카탈로그 테스트
+  전부 ship (suite PR #20 + #21, 2026-05-12) + dashboard 활성화 (본 PR).
+- **다음 dashboard 작업**: 6-month timer follow-up (2026-11-07,
+  `claude-deep-suite docs/deep-suite-harness-roadmap.md` §M3 Phase 3). 6/6
+  플러그인 envelope 적용 완료 상태이므로 warning 은 downgrade path 대비
+  방어 가드. 정상 운영 중 trigger 예상 없음.
+
+---
+
 ## [1.3.1] — 2026-05-11 — M5 활성화: handoff + compaction-state 메트릭
 
 `claude-deep-suite` PR #11/#12/#13 (2026-05-11 머지)에서 `handoff` 와

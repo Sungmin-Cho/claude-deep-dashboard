@@ -1,0 +1,64 @@
+{
+  "$comment": "M5.5 test catalog manifest. Single source of truth for suite.tests.coverage_per_plugin metric aggregation. Mirrors claude-deep-suite docs/test-catalog.md §1-§8 1:1. When the suite-repo catalog updates (test added / status changes), this manifest MUST update in lockstep — similar to ADOPTION_LEDGER in suite-constants.js. Catalog drift is not validated by CI; it is a manual review-time check (CHANGELOG entry should call out the manifest update).",
+  "catalog_version": "1.0",
+  "last_updated": "2026-05-12",
+  "source_reference": "claude-deep-suite/docs/test-catalog.md",
+  "tests": [
+    {
+      "id": "1",
+      "name": "manifest-doc sync",
+      "participating_plugins": ["suite"],
+      "status": "done",
+      "suite_anchor": "#1-manifest-doc-sync-m2-absorbed"
+    },
+    {
+      "id": "2",
+      "name": "artifact schema fixture",
+      "participating_plugins": ["suite"],
+      "status": "done",
+      "suite_anchor": "#2-artifact-schema-fixture-m3-absorbed"
+    },
+    {
+      "id": "3",
+      "name": "hook golden",
+      "participating_plugins": ["deep-work", "deep-evolve", "deep-wiki"],
+      "status": "done",
+      "suite_anchor": "#3-hook-golden-test-m55-3-2026-05-12"
+    },
+    {
+      "id": "4",
+      "name": "cross-platform CI matrix",
+      "participating_plugins": ["deep-work", "deep-evolve", "deep-wiki", "deep-review"],
+      "status": "done",
+      "suite_anchor": "#4-cross-platform-ci-matrix-m55-4"
+    },
+    {
+      "id": "5",
+      "name": "stale-recovery",
+      "participating_plugins": ["deep-review", "deep-wiki", "deep-evolve"],
+      "status": "done",
+      "suite_anchor": "#5-stale-recovery-test-m55-5-2026-05-12"
+    },
+    {
+      "id": "6",
+      "name": "null-signal redistribution",
+      "participating_plugins": ["deep-dashboard"],
+      "status": "done",
+      "suite_anchor": "#6-null-signal-redistribution-m55-6"
+    },
+    {
+      "id": "7",
+      "name": "dangerous-command denylist",
+      "participating_plugins": ["suite", "deep-work"],
+      "status": "done",
+      "suite_anchor": "#7-dangerous-command-denylist-m55-7-2026-05-12"
+    },
+    {
+      "id": "8",
+      "name": "context handoff round-trip",
+      "participating_plugins": ["deep-work", "deep-evolve"],
+      "status": "done",
+      "suite_anchor": "#8-context-handoff-round-trip-m55-8--m57-absorbed"
+    }
+  ]
+}
