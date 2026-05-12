@@ -1,0 +1,62 @@
+name: Catalog Drift Check
+
+# Guards against silent drift between
+#   lib/test-catalog-manifest.json                       (dashboard-internal)
+#   claude-deep-suite/docs/test-catalog.md               (authoritative)
+#
+# The dashboard manifest is the single source of truth for the
+# suite.tests.coverage_per_plugin metric (M5.5-activated, v1.3.2). It
+# mirrors §1-§8 of the suite-repo catalog 1:1 and must update in lockstep
+# whenever the suite-repo catalog flips status / renames / adds rows.
+#
+# This workflow runs scripts/check-catalog-drift.js on:
+#   - every PR (path-filtered to relevant files)
+#   - every push to main (full coverage)
+#   - daily at 06:30 UTC (30 min offset from the suite-repo cron at 06:00,
+#     so the two are unlikely to race when the upstream catalog updates
+#     out-of-band)
+#
+# Mirrors the suite-repo manifest-doc-sync.yml pattern at the dashboard
+# level. First workflow in this repo (v1.3.3, 2026-05-12).
+
+on:
+  pull_request:
+    paths:
+      - 'lib/test-catalog-manifest.json'
+      - 'scripts/check-catalog-drift.js'
+      - 'lib/check-catalog-drift.test.js'
+      - '.github/workflows/catalog-drift-check.yml'
+  push:
+    branches: [main]
+  schedule:
+    # Daily at 06:30 UTC — picks up suite-repo catalog updates merged
+    # outside the dashboard's PR cycle (e.g. a §5 status flip in suite-repo).
+    - cron: '30 6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # gh CLI uses GH_TOKEN (not GITHUB_TOKEN) when available. Provide both
+      # for forward-compat; the script's gh api call needs read-only access.
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sanity print
+        run: node -e "console.log('node ' + process.version)"
+
+      - name: Drift parser unit tests
+        run: node --test lib/check-catalog-drift.test.js
+
+      - name: Catalog drift check (gh api fallback against suite-repo)
+        run: node scripts/check-catalog-drift.js
