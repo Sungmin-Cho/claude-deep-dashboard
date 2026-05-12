@@ -2,6 +2,59 @@
 
 # Changelog
 
+## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip guard)
+
+Test-only addition pairing with the suite-side regression guard
+(`claude-deep-suite/tests/handoff-roundtrip-fixtures.test.js`,
+`docs/test-catalog.md` §9, PR #24 merge `0ca870e`). No metric, schema,
+or behavior change on the M4-core surface.
+
+### Added
+
+- **`test/fixtures/handoff-roundtrip/{01..04}-*.json`** (byte-identical
+  mirror of suite §9 fixture) — 4 canonical envelope-wrapped artifacts
+  (deep-work forward handoff + 2 compaction-state + deep-evolve reverse
+  handoff with `parent_run_id` chain closure). `README.md` documents the
+  manual mirror policy + drift-detection-by-test-failure invariant.
+- **`lib/e2e-suite-roundtrip.test.js`** (+8 assertions, 251 → 259 tests)
+  feeds the 4-artifact set through `aggregator.js`'s three M5-activated
+  compute functions and asserts the expected numeric metric values are
+  emitted:
+  - `suite.compaction.frequency` = **2**
+  - `suite.compaction.preserved_artifact_ratio` (mean) = **0.4**
+  - `suite.handoff.roundtrip_success_rate` = **1.0**
+- Two negative scenarios: removing the forward handoff and corrupting
+  the reverse handoff's `parent_run_id` both drop the round-trip rate
+  to 0 — guards against silent chain-integrity drift.
+
+### Why
+
+The suite §9 fixture is the **provider** of a canonical 4-artifact set
+that exercises every cross-plugin contract surface (envelope schema,
+payload schema, identity-triplet, `parent_run_id` chain, metric shape).
+The dashboard is the **consumer** of those artifacts at runtime. Without
+this e2e, a silent provider-side change (e.g., a producer renames
+`preserved_artifact_paths` → `preserved_paths`) would surface only in
+production when collector output diverges. With it, every dashboard PR
+exercises the same metric math the suite §9 fixture math is pinned to.
+
+### Catches
+
+1. `envelope.parent_run_id` chain breakage in either direction (suite or
+   dashboard side)
+2. Payload field rename across the four payloads
+3. Aggregator math drift (mean-of-ratios formula change, denominator
+   inclusion of continuation handoffs, etc.)
+
+### Maintenance
+
+Suite §9 fixture is the **single source of truth**. When the suite repo
+publishes a fixture update under `tests/fixtures/handoff-roundtrip/`,
+re-copy the four JSON files into `test/fixtures/handoff-roundtrip/`
+before the next dashboard release. The pinned metric values in
+`lib/e2e-suite-roundtrip.test.js` are the drift signal — if the math
+shifts on the suite side, this test fails and the maintainer re-pins.
+
 ## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (post-EOD-3 deep-review)
 
 Defensive follow-up to the v1.3.2 deep-review

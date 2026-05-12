@@ -2,6 +2,56 @@
 
 # 변경 이력
 
+## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip 가드)
+
+Suite 측 회귀 가드(`claude-deep-suite/tests/handoff-roundtrip-fixtures.test.js`,
+`docs/test-catalog.md` §9, PR #24 merge `0ca870e`)와 짝을 이루는 test-only
+추가. 메트릭 / 스키마 / 동작 변경 없음 — M4-core 표면 그대로.
+
+### 추가
+
+- **`test/fixtures/handoff-roundtrip/{01..04}-*.json`** (suite §9 fixture
+  byte-identical 미러) — 4 canonical envelope-wrapped artifacts (deep-work
+  forward handoff + 2 compaction-state + deep-evolve reverse handoff w/
+  `parent_run_id` chain closure). `README.md`가 수동 미러 정책 + drift
+  자동 감지 invariant 명시.
+- **`lib/e2e-suite-roundtrip.test.js`** (+8 assertions, 251 → 259 tests)
+  4-artifact set 을 `aggregator.js`의 3개 M5-activated compute function
+  에 통과시켜 expected numeric 메트릭값을 dashboard 가 정상 emit 하는지
+  검증:
+  - `suite.compaction.frequency` = **2**
+  - `suite.compaction.preserved_artifact_ratio` (mean) = **0.4**
+  - `suite.handoff.roundtrip_success_rate` = **1.0**
+- 2개 negative 시나리오: forward handoff 제거 + reverse handoff
+  `parent_run_id` 변조 → 양쪽 모두 success rate 가 0 으로 떨어지는지
+  확인 (chain-integrity silent drift 가드).
+
+### 왜
+
+Suite §9 fixture 는 cross-plugin contract 표면 (envelope schema, payload
+schema, identity-triplet, `parent_run_id` chain, metric shape) 을 모두
+훈련하는 canonical 4-artifact set 의 **provider**. Dashboard 는 런타임
+**consumer**. 본 e2e 없이는 silent provider-side 변경 (예: producer 가
+`preserved_artifact_paths` → `preserved_paths` rename) 이 production
+collector 가 다이버전스할 때만 surface. 추가 후에는 모든 dashboard PR 이
+suite §9 fixture math 와 동일한 메트릭 계산을 회귀 검증.
+
+### 잡는 회귀
+
+1. `envelope.parent_run_id` chain breakage (양쪽 모두)
+2. 4 payload 의 field rename
+3. Aggregator math drift (mean-of-ratios formula, continuation handoff
+   denominator 포함 등)
+
+### 운영 가이드
+
+Suite §9 fixture 가 **single source of truth**. Suite repo 가
+`tests/fixtures/handoff-roundtrip/` 아래 fixture update 를 publish 하면,
+다음 dashboard release 전에 4 JSON 파일을 `test/fixtures/handoff-roundtrip/`
+로 재미러. `lib/e2e-suite-roundtrip.test.js` 의 pinned metric value 가
+drift signal 역할 — math 가 suite 측에서 변경되면 본 test 가 fail 하고
+유지보수자가 re-pin.
+
 ## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (EOD-3 deep-review 후속)
 
 v1.3.2 deep-review(`.deep-review/reports/2026-05-12-202554-review.md`)
