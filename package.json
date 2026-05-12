@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"lib/**/*.test.js\"",
-    "validate:envelope": "node scripts/validate-envelope-emit.js"
+    "validate:envelope": "node scripts/validate-envelope-emit.js",
+    "check:catalog-drift": "node scripts/check-catalog-drift.js"
   }
 }
