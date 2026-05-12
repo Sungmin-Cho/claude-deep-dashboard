@@ -76,10 +76,7 @@ This release closes the last unchecked item in
 
 - **M5.5 acceptance** (claude-deep-suite): **CLOSED** — all 8 catalog tests
   shipped (suite PRs #20 + #21, 2026-05-12) + dashboard activation (this PR).
-- **Next dashboard work**: 6-month timer follow-up (2026-11-07,
-  `claude-deep-suite docs/deep-suite-harness-roadmap.md` §M3 Phase 3). With
-  6/6 plugin envelope adoption complete, the warning is a defensive guard
-  for the downgrade path; no expected trigger during normal operation.
+- **Next dashboard work**: 6-month envelope-migration timer follow-up (2026-11-07) — see `[1.3.1]` "Migration notes" for adoption-ledger context (info unchanged since 1.3.1).
 
 ---
 

@@ -72,10 +72,7 @@
 
 - **M5.5 수락 기준** (claude-deep-suite): **CLOSED** — 8 카탈로그 테스트
   전부 ship (suite PR #20 + #21, 2026-05-12) + dashboard 활성화 (본 PR).
-- **다음 dashboard 작업**: 6-month timer follow-up (2026-11-07,
-  `claude-deep-suite docs/deep-suite-harness-roadmap.md` §M3 Phase 3). 6/6
-  플러그인 envelope 적용 완료 상태이므로 warning 은 downgrade path 대비
-  방어 가드. 정상 운영 중 trigger 예상 없음.
+- **다음 dashboard 작업**: 6-month envelope-migration timer follow-up (2026-11-07) — adoption-ledger 맥락은 `[1.3.1]` "Migration notes" 참조 (1.3.1 이후 정보 변경 없음).
 
 ---
 
