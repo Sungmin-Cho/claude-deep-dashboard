@@ -275,18 +275,27 @@ metrics:
     aggregation: "count(INITIATING handoffs whose run_id appears as a parent_run_id of any non-aggregator envelope produced by their declared payload.to.producer) / count(INITIATING handoffs). Per claude-deep-suite/guides/long-run-handoff.md §7: 'the receiver either emits a reverse handoff back, OR emits a final receipt'. A handoff is INITIATING when its parent_run_id is absent or does not chain to another handoff (Round 3 fix: continuation handoffs are excluded from the denominator). Aggregator-kind envelopes (harnessability-report, evolve-insights, index) are excluded from the child side per the same guide; they index, they don't continue a thread. Handoffs missing payload.to.producer are kept in the denominator but cannot match any child → defensively excluded from the numerator."
     null_when: "no initiating handoff envelopes present (all observed handoffs are continuations)"
 
-  # ────────────────────────── M4-deferred (1) ──────────────────────────────
-  # Emit { value: null, deferred_until: <milestone> } until source lands.
+  # ────────────────────────── M5.5-activated (1) ──────────────────────────
+  # Promoted from M4-deferred → M4-core on 2026-05-12 once
+  # claude-deep-suite M5.5 closure (8/8 done) ratified the test catalog:
+  #   - suite PR #20 `62610c9c` — 6/6 plugin tests ship batch
+  #   - suite PR #21 `d0dabc9f` — deep-review v1.4.2 cross-platform fix
+  #   - docs/test-catalog.md §1-§8 all done
+  #
+  # Source: lib/test-catalog-manifest.json (dashboard-internal, mirrors the
+  # suite-repo catalog). Manifest is updated manually in lockstep with the
+  # suite-repo catalog (similar to ADOPTION_LEDGER policy). Drift is not
+  # validated by CI — it is a manual review-time check (CHANGELOG should
+  # call out manifest updates).
 
   - id: suite.tests.coverage_per_plugin
-    tier: M4-deferred
-    deferred_until: M5.5
-    unit: ratio
-    description: "Per-plugin test catalog coverage against the 8-item M5.5 standard test catalog. One value per plugin in the suite."
+    tier: M4-core
+    unit: distribution
+    description: "Per-plugin test catalog coverage against the 8-item M5.5 standard test catalog. Distribution value: { <plugin>: { covered, expected, ratio, tests } } for each plugin that participates in ≥ 1 catalog test. Plugins with zero catalog participation (e.g., deep-docs) are omitted from the distribution and surfaced via source_summary.plugins_unparticipating."
     source:
       - producer: deep-dashboard
-        kind: ci-status-aggregate
-        path_glob: null  # M5.5 CI status integration
-        schema_id: "test-coverage/v1.0"
-    aggregation: "for each plugin: count(passed catalog items) / 8."
-    null_when: "M5.5 not yet delivered (8-item catalog not finalized)"
+        kind: test-catalog-manifest
+        path_glob: "lib/test-catalog-manifest.json"  # dashboard-internal, ships with plugin
+        schema_id: "deep-dashboard/test-catalog-manifest/v1.0"
+    aggregation: "for each plugin appearing in any tests[].participating_plugins entry: covered = count(tests where plugin participates AND status == 'done'); expected = count(tests where plugin participates); ratio = covered / expected. Plugins with expected == 0 are omitted from the value map."
+    null_when: "manifest file missing or unparseable OR tests array empty"

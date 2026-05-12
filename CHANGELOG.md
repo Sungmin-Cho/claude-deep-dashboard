@@ -2,6 +2,87 @@
 
 # Changelog
 
+## [1.3.2] — 2026-05-12 — M5.5 Activation: per-plugin test coverage
+
+Activates the final M4-deferred metric. With this release, **all 16 metrics
+in `lib/metrics-catalog.yaml` are M4-core** — the `M4_DEFERRED_METRICS` slot
+is preserved for forward-compat with future milestones but currently empty.
+
+This release closes the last unchecked item in
+`claude-deep-suite/docs/deep-suite-harness-roadmap.md` §M5.5 acceptance.
+
+### Added
+
+- **`suite.tests.coverage_per_plugin` metric** (M5.5-activated, promoted from
+  M4-deferred). Emits a per-plugin distribution of `{ covered, expected,
+  ratio, tests }` against the 8-item M5.5 standard test catalog. Plugins
+  with zero catalog participation (e.g., deep-docs in the current 8-item
+  catalog) are omitted from the value map and surfaced via
+  `source_summary.plugins_unparticipating` for transparency.
+- **`lib/test-catalog-manifest.json`** — dashboard-internal manifest, single
+  source of truth for the metric. Mirrors `claude-deep-suite
+  docs/test-catalog.md` §1-§8 1:1. Updated manually in lockstep with the
+  suite-repo catalog (similar to `ADOPTION_LEDGER` in `suite-constants.js`).
+  Initial snapshot: 8/8 done state as of 2026-05-12 EOD-2 (suite PRs #20
+  `62610c9c` + #21 `d0dabc9f`).
+- `lib/test-catalog-manifest.test.js` — schema + invariants for the manifest
+  (6 tests). Catches drift from the documented contract: 8 entries, unique
+  ids 1..8, known plugin slugs, `done|pending|failing` status.
+
+### Fixed
+
+- `tests/fixtures/sample-harnessability-report.json`:
+  `envelope.producer_version` bumped to match `plugin.json.version` (was
+  stale at `1.2.0` since the M3 envelope adoption; previous version bumps
+  did not run `npm run validate:envelope` as a release gate, so the drift
+  surfaced when this release exercised the validator). The fixture is now
+  in sync with the single-source-of-truth contract enforced by
+  `scripts/validate-envelope-emit.js#L120`.
+
+### Changed
+
+- `lib/metrics-catalog.yaml`: `suite.tests.coverage_per_plugin` moved from
+  `M4-deferred (1)` block to a new `M5.5-activated (1)` block. Tier
+  `M4-deferred` → `M4-core`, unit `ratio` → `distribution`, source kind
+  `ci-status-aggregate` → `test-catalog-manifest`. Aggregation formula
+  updated to per-plugin participation-aware ratio (was uniform `/8`, now
+  `/expected per plugin`).
+- `lib/aggregator.js`: `M4_DEFERRED_METRICS` now empty (forward-compat
+  slot preserved). New `computeTestsCoveragePerPlugin()` exported via
+  `_internal` for testability.
+- `lib/suite-formatter.js`: distribution renderer handles per-plugin ratio
+  cells inline (`deep-work=100%`, …) without `[object Object]` leakage.
+  Empty M4-deferred section is omitted from the report; it re-appears
+  automatically when a future milestone registers new deferred metrics.
+
+### Tests
+
+- +19 tests (manifest schema 6 + coverage_per_plugin computer 9 + formatter
+  distribution rendering 4). Total: 220 → 239.
+
+### Migration / compatibility
+
+- **No producer plugin change required.** The new metric is dashboard-
+  internal (`producer: deep-dashboard, kind: test-catalog-manifest`). Other
+  plugins do not emit anything new.
+- **Manifest sync policy** (similar to `ADOPTION_LEDGER` in
+  `suite-constants.js`): when `claude-deep-suite docs/test-catalog.md`
+  adds / removes / changes status of a test, update
+  `lib/test-catalog-manifest.json` in the next dashboard release and call
+  it out in this CHANGELOG. CI does not validate drift — the manifest is a
+  manual review-time check.
+
+### Milestone status
+
+- **M5.5 acceptance** (claude-deep-suite): **CLOSED** — all 8 catalog tests
+  shipped (suite PRs #20 + #21, 2026-05-12) + dashboard activation (this PR).
+- **Next dashboard work**: 6-month timer follow-up (2026-11-07,
+  `claude-deep-suite docs/deep-suite-harness-roadmap.md` §M3 Phase 3). With
+  6/6 plugin envelope adoption complete, the warning is a defensive guard
+  for the downgrade path; no expected trigger during normal operation.
+
+---
+
 ## [1.3.1] — 2026-05-11 — M5 Activation: handoff + compaction-state metrics
 
 Activates 3 of the 4 M4-deferred metrics now that
