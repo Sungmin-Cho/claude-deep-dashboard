@@ -2,6 +2,85 @@
 
 # 변경 이력
 
+## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (EOD-3 deep-review 후속)
+
+v1.3.2 deep-review(`.deep-review/reports/2026-05-12-202554-review.md`)
+백로그를 닫는 방어적 follow-up 패치. 메트릭 변경/엔벨로프 스키마 변경 없음 —
+M4-core 표면의 동작은 그대로다.
+
+### 추가
+
+- **`scripts/check-catalog-drift.js`** (W1) — `lib/test-catalog-manifest.json`
+  과 suite-repo 진실원본 `claude-deep-suite/docs/test-catalog.md` 를 비교해
+  silent drift(테스트 이름·participating_plugins·done 상태 차이)를 잡는다.
+  source 해석 순서: `--suite-path=` 플래그 → `SUITE_REPO_LOCAL` env →
+  `gh api` fallback(CI 기본). 멀티 플러그인 separator 로 `,` 와 ` + ` 모두 허용
+  (의미 동일로 처리). `lib/check-catalog-drift.test.js` 에 10개 단위 테스트 추가
+  (parser order, heading 부재 에러, pending 상태 감지, separator 등가성, 일치
+  케이스, status drift, participating_plugins drift, name drift,
+  missing-from-manifest, extra-in-manifest).
+- **`.github/workflows/catalog-drift-check.yml`** (W1) — 본 repo 의 첫 GitHub
+  Actions 워크플로. PR 시 (path-filtered) + main push + 매일 06:30 UTC 크론으로
+  drift checker 실행. suite-repo `manifest-doc-sync.yml` 패턴을 dashboard
+  레벨에서 미러.
+- **`npm run check:catalog-drift`** alias.
+- **`lib/aggregator.test.js`** (I4) — `participating_plugins` 가 빈 배열인
+  경우 방어 케이스 테스트. 향후 매니페스트 스키마가 TBD-소유권 테스트를
+  허용하도록 완화되더라도 silent miscount 가 발생하지 않도록 가드.
+- **`lib/suite-formatter.test.js`** (I1) — `parseDistribution` 헬퍼 +
+  `assert.deepEqual` 로 per-plugin distribution 맵의 전체 pair-set 을 잠근다
+  (기존 regex smoke check 와 병행). 알파벳 순 정규화 회귀와 silently 누락된
+  pair 를 감지.
+
+### 변경
+
+- **`lib/suite-constants.js`** (W2) — `KNOWN_SUITE_PLUGINS` (7-슬러그
+  카탈로그: `suite` + 6 플러그인) 를 여기로 hoist. `lib/aggregator.js` 의
+  `Object.freeze` Array 와 `lib/test-catalog-manifest.test.js` 의 inline
+  `KNOWN_PLUGINS` Set 으로 중복 정의되어 있었음. 이제 플러그인 추가 시 한
+  파일만 수정하면 된다. `ADOPTION_LEDGER`, `EXPECTED_SOURCES`,
+  `PAYLOAD_REQUIRED_FIELDS`, `AGGREGATOR_KINDS` 가 세운 선례 연장.
+- **`lib/metrics-catalog.yaml`** (I2) — `suite.tests.coverage_per_plugin`
+  의 `aggregation` 과 `null_when` 설명을 다듬어 by-construction invariant
+  를 명시 (per-plugin cell 의 expected 는 항상 ≥ 1; `computeTestsCoveragePerPlugin`
+  의 `cell.ratio = expected === 0 ? null` 분기는 defensive-only 이며 운영
+  중에는 도달 불가). 문서만 — 코드 변경 없음.
+- **`CHANGELOG.md` / `CHANGELOG.ko.md` 1.3.2 "다음 dashboard 작업"** (I3)
+  — 4줄 bullet 을 한 줄 `[1.3.1]` "Migration notes" back-reference 로 축약
+  (1.3.1 이후 정보 변경 없음).
+
+### 수정
+
+- **`tests/fixtures/sample-harnessability-report.json`** —
+  `envelope.producer_version` 1.3.2 → 1.3.3 (plugin.json.version 매칭;
+  `scripts/validate-envelope-emit.js` 가 강제).
+
+### 테스트
+
+- 251/251 통과 (1.3.2 의 239 대비 +12: W2 immutability 1 + W1 drift checker
+  10 + I4 empty-array 1; I1 은 기존 테스트 in-place 강화로 카운트 변화 없음;
+  I2/I3 는 문서 전용).
+
+### 마이그레이션 / 호환성
+
+- 엔벨로프 스키마 변경 없음. `producer_version` 에 strict 동등성을 사용하는
+  컨슈머는 1.3.2 → 1.3.3 으로 갱신 필요.
+- `KNOWN_SUITE_PLUGINS` 는 `suite-constants.js` 의 신규 named export (additive;
+  기존 export 깨짐 없음).
+- `npm run check:catalog-drift` 는 `--suite-path=`, `SUITE_REPO_LOCAL`, 또는
+  PATH 의 `gh` CLI 중 하나가 필요. CI 잡은 워크플로 기본 `GITHUB_TOKEN` 으로
+  gh fallback 경로 사용.
+
+### 마일스톤 상태
+
+- **M5.5 수락 기준** (claude-deep-suite): v1.3.2 부터 **CLOSED**. 본 패치는
+  post-closure cleanup 으로 마일스톤 advance 가 아님.
+- **다음 dashboard 작업**: 6-month envelope-migration timer follow-up
+  (2026-11-07) — adoption-ledger 맥락은 `[1.3.1]` "Migration notes" 참조
+  (1.3.1 이후 정보 변경 없음).
+
+---
+
 ## [1.3.2] — 2026-05-12 — M5.5 활성화: per-plugin 테스트 카탈로그 커버리지
 
 마지막 M4-deferred 메트릭을 활성화한다. 이 릴리스로 **`lib/metrics-catalog.yaml`

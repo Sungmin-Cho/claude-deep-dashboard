@@ -2,6 +2,89 @@
 
 # Changelog
 
+## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (post-EOD-3 deep-review)
+
+Defensive follow-up to the v1.3.2 deep-review
+(`.deep-review/reports/2026-05-12-202554-review.md`). No metric or
+envelope schema change; no behavior change on the M4-core surface.
+
+### Added
+
+- **`scripts/check-catalog-drift.js`** (W1) — compares
+  `lib/test-catalog-manifest.json` against the suite-repo source of truth
+  at `claude-deep-suite/docs/test-catalog.md`. Catches silent drift in
+  test name, participating plugins, or done-status. Resolves the suite
+  source via `--suite-path=` flag, `SUITE_REPO_LOCAL` env, or `gh api`
+  fallback (CI default). Parser handles both `,` and ` + ` as multi-plugin
+  separators (semantic-only check). +10 unit tests in
+  `lib/check-catalog-drift.test.js` covering parser order, missing-heading
+  error, pending-status detection, separator equivalence, agreement, status
+  drift, participating_plugins drift, name drift, missing-from-manifest,
+  extra-in-manifest.
+- **`.github/workflows/catalog-drift-check.yml`** (W1) — first GitHub
+  Actions workflow in this repo. Runs the drift checker on every PR
+  (path-filtered), every push to main, and daily at 06:30 UTC. Mirrors
+  the suite-repo `manifest-doc-sync.yml` pattern at the dashboard level.
+- **`npm run check:catalog-drift`** alias.
+- **`lib/aggregator.test.js`** (I4) — defensive test for empty
+  `participating_plugins` array. Guards against silent miscount if the
+  manifest schema is ever relaxed to allow TBD-ownership tests.
+- **`lib/suite-formatter.test.js`** (I1) — `parseDistribution` helper +
+  `assert.deepEqual` on the parsed per-plugin distribution map alongside
+  the existing regex smoke checks. Locks against alphabetization
+  regression and silently dropped pairs.
+
+### Changed
+
+- **`lib/suite-constants.js`** (W2) — hoisted `KNOWN_SUITE_PLUGINS` (the
+  7-slug catalog: `suite` + 6 plugin slugs) here. Was duplicated as
+  `Object.freeze` Array in `lib/aggregator.js` and as inline `Set` named
+  `KNOWN_PLUGINS` in `lib/test-catalog-manifest.test.js`. Future plugin
+  additions touch one file. Continues the precedent set by
+  `ADOPTION_LEDGER`, `EXPECTED_SOURCES`, `PAYLOAD_REQUIRED_FIELDS`, and
+  `AGGREGATOR_KINDS`.
+- **`lib/metrics-catalog.yaml`** (I2) — tightened `aggregation` and
+  `null_when` for `suite.tests.coverage_per_plugin` to make the
+  by-construction invariant explicit (per-plugin cells always have
+  expected ≥ 1; the `cell.ratio = expected === 0 ? null` branch in
+  `computeTestsCoveragePerPlugin` is defensive-only and unreachable in
+  production). Doc-only — code unchanged.
+- **`CHANGELOG.md` / `CHANGELOG.ko.md` 1.3.2 "Next dashboard work"** (I3)
+  — collapsed the 4-line bullet to a one-line back-reference to `[1.3.1]`
+  "Migration notes" (information unchanged since 1.3.1).
+
+### Fixed
+
+- **`tests/fixtures/sample-harnessability-report.json`** —
+  `envelope.producer_version` bumped 1.3.2 → 1.3.3 to match
+  `plugin.json.version` (enforced by `scripts/validate-envelope-emit.js`).
+
+### Tests
+
+- 251 / 251 passing (+12 over 1.3.2's 239: 1 W2 immutability +
+  10 W1 drift-checker + 1 I4 empty-array; I1 strengthened an existing
+  test in place, no count change; I2 / I3 are doc-only).
+
+### Migration / compatibility
+
+- No envelope schema change. Consumers using strict equality on
+  `producer_version` must bump 1.3.2 → 1.3.3.
+- `KNOWN_SUITE_PLUGINS` is a new named export from `suite-constants.js`
+  (additive; no prior export to break).
+- `npm run check:catalog-drift` requires either `--suite-path=`,
+  `SUITE_REPO_LOCAL`, or a working `gh` CLI in `PATH`. The CI job uses
+  the gh fallback with the workflow's default `GITHUB_TOKEN`.
+
+### Milestone status
+
+- **M5.5 acceptance** (claude-deep-suite): **CLOSED** since v1.3.2 — this
+  patch is post-closure cleanup, not a milestone advance.
+- **Next dashboard work**: 6-month envelope-migration timer follow-up
+  (2026-11-07) — see `[1.3.1]` "Migration notes" for adoption-ledger
+  context (info unchanged since 1.3.1).
+
+---
+
 ## [1.3.2] — 2026-05-12 — M5.5 Activation: per-plugin test coverage
 
 Activates the final M4-deferred metric. With this release, **all 16 metrics

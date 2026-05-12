@@ -1,6 +1,6 @@
 {
   "name": "@deep-suite/deep-dashboard",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Cross-plugin harness diagnostics for deep-suite",
   "private": true,
   "type": "module",
