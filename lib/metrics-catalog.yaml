@@ -297,5 +297,5 @@ metrics:
         kind: test-catalog-manifest
         path_glob: "lib/test-catalog-manifest.json"  # dashboard-internal, ships with plugin
         schema_id: "deep-dashboard/test-catalog-manifest/v1.0"
-    aggregation: "for each plugin appearing in any tests[].participating_plugins entry: covered = count(tests where plugin participates AND status == 'done'); expected = count(tests where plugin participates); ratio = covered / expected. Plugins with expected == 0 are omitted from the value map."
-    null_when: "manifest file missing or unparseable OR tests array empty"
+    aggregation: "for each plugin appearing in any tests[].participating_plugins entry: covered = count(tests where plugin participates AND status == 'done'); expected = count(tests where plugin participates); ratio = covered / expected. By construction a plugin enters the value map only via a test that names it, so every cell has expected ≥ 1 — the per-cell `expected === 0 ? null` branch in computeTestsCoveragePerPlugin is defensive-only and unreachable in production."
+    null_when: "manifest file missing or unparseable OR tests array empty. Per-cell ratio is never null by construction (see aggregation note)."
