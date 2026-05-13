@@ -4,6 +4,11 @@
   "description": "Cross-plugin harness diagnostics — harnessability scoring and unified dashboard for the deep-suite ecosystem",
   "author": { "name": "sungmin" },
   "license": "MIT",
+  "homepage": "https://github.com/Sungmin-Cho/claude-deep-dashboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sungmin-Cho/claude-deep-dashboard.git"
+  },
   "keywords": ["harness", "dashboard", "harnessability", "diagnostics", "deep-suite"],
   "category": "productivity"
 }

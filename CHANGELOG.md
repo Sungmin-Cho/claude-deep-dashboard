@@ -55,6 +55,13 @@ before the next dashboard release. The pinned metric values in
 `lib/e2e-suite-roundtrip.test.js` are the drift signal — if the math
 shifts on the suite side, this test fails and the maintainer re-pins.
 
+### Fixed
+
+- **`tests/fixtures/sample-harnessability-report.json`** —
+  `envelope.producer_version` bumped 1.3.3 → 1.3.4 to match
+  `plugin.json.version` (enforced by `scripts/validate-envelope-emit.js`;
+  same invariant as v1.3.3 §Fixed).
+
 ## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (post-EOD-3 deep-review)
 
 Defensive follow-up to the v1.3.2 deep-review
