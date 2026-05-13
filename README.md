@@ -2,7 +2,7 @@
 
 # deep-dashboard
 
-Cross-plugin harness diagnostics for the [deep-suite](https://github.com/sungmin/deep-suite) ecosystem.
+Cross-plugin harness diagnostics for the [deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) ecosystem.
 
 deep-dashboard provides three capabilities:
 
@@ -162,6 +162,73 @@ Findings from fitness rules, review receipts, and docs staleness checks are mapp
 
 **Schema notes**
 - `transfer.received_from`: `non-empty string | null`. Empty strings and numeric sentinels are not part of the schema; `null` means no transfer learning was received.
+
+---
+
+### Suite Telemetry (`--suite`, since 1.3.0)
+
+Suite mode is an opt-in superset of the legacy single-snapshot dashboard.
+Where legacy mode renders a one-shot effectiveness view from 5 sources,
+suite mode accumulates a **time-series** of 16 cross-plugin metrics across
+all 6 deep-suite plugins, and is the substrate for OTel observability.
+
+**Data sources (11):** 8 M3 envelope artifacts + 3 NDJSON event logs.
+
+| Source | Producer / Kind | Path |
+|---|---|---|
+| Session receipts | `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` |
+| Slice receipts | `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` |
+| Recurring findings | `(deep-review, recurring-findings)` | `.deep-review/recurring-findings.json` |
+| Last scan | `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` |
+| Evolve receipt | `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` |
+| Evolve insights | `(deep-evolve, evolve-insights)` | `.deep-evolve/evolve-insights.json` |
+| Harnessability | `(deep-dashboard, harnessability-report)` | `.deep-dashboard/harnessability-report.json` |
+| Wiki index | `(deep-wiki, index)` | `<wiki_root>/.wiki-meta/index.json` |
+| Hook log (work) | `(deep-work, hook-log)` | `.deep-work/hooks.log.jsonl` (NDJSON) |
+| Hook log (evolve) | `(deep-evolve, hook-log)` | `.deep-evolve/hooks.log.jsonl` (NDJSON) |
+| Wiki event log | `(deep-wiki, log)` | `<wiki_root>/log.jsonl` (NDJSON) |
+
+The collector honors `options.wikiRoot` and the `DEEP_WIKI_ROOT` environment
+variable for vaults that live outside the project root.
+
+**Metrics (16 total)** — the authoritative catalog is
+[`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric
+carries its sources, aggregation formula, and `null_when` semantics.
+
+| Tier | Metric ID | Unit | Summary |
+|---|---|---|---|
+| M4-core | `suite.hooks.block_rate` | ratio | Hook invocations blocked by hook scripts. |
+| M4-core | `suite.hooks.error_rate` | ratio | Hook script internal-error rate. |
+| M4-core | `suite.artifact.freshness_seconds` | seconds | Maximum age of any envelope-wrapped artifact. |
+| M4-core | `suite.artifact.schema_failures_total` | count | Envelopes rejected by collector identity-guards. |
+| M4-core | `suite.integrate.recommendation_accept_rate` | ratio | Phase 5 Integrate accept rate from session receipts. |
+| M4-core | `suite.review.verdict_mix` | distribution | APPROVE / CONCERN / REQUEST_CHANGES split. |
+| M4-core | `suite.review.recurring_finding_count` | count | Findings with occurrences ≥ 2. |
+| M4-core | `suite.wiki.auto_ingest_candidates_total` | count | SessionStart auto-ingest detection count. |
+| M4-core | `suite.docs.auto_fix_accept_rate` | ratio | deep-docs garden auto-fix acceptance rate. |
+| M4-core | `suite.evolve.q_delta_per_epoch` | numeric | Per-epoch quality delta from evolve receipt. |
+| M4-core | `suite.dashboard.missing_signal_ratio` | ratio | Fraction of expected sources missing or invalid. |
+| M4-core | `suite.cross_plugin.run_id_chain_completeness` | ratio | `parent_run_id` chain integrity across plugins. |
+| M5-activated | `suite.compaction.frequency` | count | Compaction events observed across sessions. |
+| M5-activated | `suite.compaction.preserved_artifact_ratio` | ratio | Mean preserved-vs-discarded ratio per compaction. |
+| M5-activated | `suite.handoff.roundtrip_success_rate` | ratio | Fraction of initiating handoffs that round-tripped. |
+| M5.5-activated | `suite.tests.coverage_per_plugin` | distribution | Per-plugin test catalog coverage. |
+
+**Outputs:**
+
+- `.deep-dashboard/suite-metrics.jsonl` — append-only JSONL time series (one snapshot per `--suite` run).
+- `.deep-dashboard/suite-report.md` — markdown trend report with arrows (↑/↓/→/·/?) comparing the latest snapshot to the previous baseline. The full arrow vocabulary lives in `lib/suite-formatter.js`.
+
+**Optional OTel export:** when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, the
+snapshot is also pushed via `exportSnapshot(snapshot)` (`lib/otel.js`) to
+the configured OTLP/HTTP-JSON collector. Export failures are non-fatal —
+logged and reported in stdout, but they do not block local report rendering.
+
+**Usage:**
+
+```
+/deep-harness-dashboard --suite
+```
 
 ---
 

@@ -52,6 +52,12 @@ Suite §9 fixture 가 **single source of truth**. Suite repo 가
 drift signal 역할 — math 가 suite 측에서 변경되면 본 test 가 fail 하고
 유지보수자가 re-pin.
 
+### 수정
+
+- **`tests/fixtures/sample-harnessability-report.json`** —
+  `envelope.producer_version` 1.3.3 → 1.3.4 (plugin.json.version 매칭;
+  `scripts/validate-envelope-emit.js` 가 강제. v1.3.3 §수정 과 동일 invariant).
+
 ## [1.3.3] — 2026-05-12 — W1+W2+I1-I4 cleanup (EOD-3 deep-review 후속)
 
 v1.3.2 deep-review(`.deep-review/reports/2026-05-12-202554-review.md`)

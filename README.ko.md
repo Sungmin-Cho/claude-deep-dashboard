@@ -2,7 +2,7 @@
 
 # deep-dashboard
 
-[deep-suite](https://github.com/sungmin/deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
+[deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
 
 deep-dashboard는 세 가지 기능을 제공합니다:
 
@@ -162,6 +162,73 @@ Fitness rules, review receipts, docs 오래됨 검사의 결과가 `suggested_ac
 
 **스키마 참고**
 - `transfer.received_from`: `non-empty string | null`. 빈 문자열이나 숫자 센티널은 스키마에 포함되지 않음. `null`은 전이 학습이 수신되지 않음을 의미.
+
+---
+
+### Suite Telemetry (`--suite`, 1.3.0 이후)
+
+Suite 모드는 기존 single-snapshot dashboard 의 opt-in superset 입니다.
+Legacy 모드가 5개 소스에서 일회성 효과성 뷰를 렌더링하는 반면, suite
+모드는 6개 deep-suite 플러그인 전체에 걸친 16개 크로스 플러그인 메트릭의
+**시계열**을 누적하며, OTel observability 의 토대가 됩니다.
+
+**데이터 소스 (11개):** 8 M3 envelope artifact + 3 NDJSON event log.
+
+| 소스 | Producer / Kind | 경로 |
+|---|---|---|
+| Session receipts | `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` |
+| Slice receipts | `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` |
+| Recurring findings | `(deep-review, recurring-findings)` | `.deep-review/recurring-findings.json` |
+| Last scan | `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` |
+| Evolve receipt | `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` |
+| Evolve insights | `(deep-evolve, evolve-insights)` | `.deep-evolve/evolve-insights.json` |
+| Harnessability | `(deep-dashboard, harnessability-report)` | `.deep-dashboard/harnessability-report.json` |
+| Wiki index | `(deep-wiki, index)` | `<wiki_root>/.wiki-meta/index.json` |
+| Hook log (work) | `(deep-work, hook-log)` | `.deep-work/hooks.log.jsonl` (NDJSON) |
+| Hook log (evolve) | `(deep-evolve, hook-log)` | `.deep-evolve/hooks.log.jsonl` (NDJSON) |
+| Wiki event log | `(deep-wiki, log)` | `<wiki_root>/log.jsonl` (NDJSON) |
+
+Collector 는 프로젝트 루트 바깥의 vault 를 위해 `options.wikiRoot` 와
+`DEEP_WIKI_ROOT` 환경 변수를 모두 인식합니다.
+
+**메트릭 (총 16개)** — 진실원본 카탈로그는
+[`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml). 각 메트릭은
+sources, aggregation 공식, `null_when` 의미를 카탈로그에 함께 명시.
+
+| Tier | Metric ID | Unit | 요약 |
+|---|---|---|---|
+| M4-core | `suite.hooks.block_rate` | ratio | hook script 가 차단한 호출 비율. |
+| M4-core | `suite.hooks.error_rate` | ratio | hook script 내부 에러 발생률. |
+| M4-core | `suite.artifact.freshness_seconds` | seconds | 가장 오래된 envelope artifact 의 age. |
+| M4-core | `suite.artifact.schema_failures_total` | count | collector identity-guard 가 reject 한 envelope 수. |
+| M4-core | `suite.integrate.recommendation_accept_rate` | ratio | Phase 5 Integrate 수락률 (session receipt). |
+| M4-core | `suite.review.verdict_mix` | distribution | APPROVE / CONCERN / REQUEST_CHANGES 분포. |
+| M4-core | `suite.review.recurring_finding_count` | count | occurrences ≥ 2 인 finding 수. |
+| M4-core | `suite.wiki.auto_ingest_candidates_total` | count | SessionStart auto-ingest 후보 누적 감지 수. |
+| M4-core | `suite.docs.auto_fix_accept_rate` | ratio | deep-docs garden auto-fix 수락률. |
+| M4-core | `suite.evolve.q_delta_per_epoch` | numeric | evolve receipt 의 epoch 당 quality delta. |
+| M4-core | `suite.dashboard.missing_signal_ratio` | ratio | missing/invalid expected source 의 비율. |
+| M4-core | `suite.cross_plugin.run_id_chain_completeness` | ratio | 플러그인 간 `parent_run_id` chain 무결성. |
+| M5-activated | `suite.compaction.frequency` | count | 세션 전반에서 관찰된 compaction 이벤트 수. |
+| M5-activated | `suite.compaction.preserved_artifact_ratio` | ratio | compaction 당 preserved-vs-discarded 평균 비율. |
+| M5-activated | `suite.handoff.roundtrip_success_rate` | ratio | initiating handoff 의 round-trip 성공률. |
+| M5.5-activated | `suite.tests.coverage_per_plugin` | distribution | 플러그인별 테스트 카탈로그 커버리지. |
+
+**산출물:**
+
+- `.deep-dashboard/suite-metrics.jsonl` — append-only JSONL 시계열 (`--suite` 실행당 한 스냅샷).
+- `.deep-dashboard/suite-report.md` — 최신 스냅샷을 직전 baseline 과 비교한 markdown trend report, 트렌드 화살표 (↑/↓/→/·/?) 포함. 전체 어휘는 `lib/suite-formatter.js` 에 정의.
+
+**선택적 OTel 내보내기:** `OTEL_EXPORTER_OTLP_ENDPOINT` 가 설정되면
+스냅샷이 `exportSnapshot(snapshot)` (`lib/otel.js`) 을 통해 설정된
+OTLP/HTTP-JSON collector 로도 push 됩니다. Export 실패는 non-fatal —
+stdout 에 로깅·보고만 되고 로컬 report 렌더링을 막지 않습니다.
+
+**사용법:**
+
+```
+/deep-harness-dashboard --suite
+```
 
 ---
 

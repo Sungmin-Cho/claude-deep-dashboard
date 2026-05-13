@@ -1,0 +1,44 @@
+name: Tests
+
+# Plugin-internal regression guard (companion to catalog-drift-check.yml,
+# which covers cross-repo manifest drift). Runs on every PR + push to main:
+#   - npm test                — node:test suite under lib/**/*.test.js
+#   - npm run validate:envelope — M3 envelope contract self-test against the
+#                                 positive fixture (tests/fixtures/...)
+#   - npm run check:version-sync — guards plugin.json ↔ package.json drift
+#                                  (envelope's producer_version SoT is
+#                                  plugin.json; package.json must mirror)
+#
+# Node 20 only — lib/ uses ESM + node:test which are stable on 20+ and a
+# matrix would not catch additional regressions for a zero-dependency plugin.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sanity print
+        run: node -e "console.log('node ' + process.version)"
+
+      - name: Version sync (plugin.json ↔ package.json)
+        run: npm run check:version-sync
+
+      - name: Envelope contract self-test
+        run: npm run validate:envelope
+
+      - name: Plugin unit tests (lib/**/*.test.js)
+        run: npm test
