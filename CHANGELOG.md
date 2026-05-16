@@ -2,6 +2,95 @@
 
 # Changelog
 
+## [1.3.5] — 2026-05-16 — catalog-drift horizon mechanism (CI fix)
+
+The `Catalog Drift Check` CI workflow has been failing on `main` daily
+since suite-side commit `688370e` (2026-05-12) renamed the heading from
+`## Catalog (8 tests)` to `## Catalog (8 M5.5 tests + 1 M5.7.B extension)`
+and added §9 as a suite-side e2e regression guard.
+
+Two coupled contract assumptions in `check-catalog-drift.js` broke:
+1. The heading regex `^## Catalog \(\d+ tests?\)` no longer matched the
+   new annotated form (current visible failure: `table parse failed:
+   catalog table heading not found`).
+2. Even with a loosened regex, the new §9 row would be flagged as
+   `id=9 missing-from-manifest` — but §9 is intentionally suite-side
+   (per suite commit message: *"Out of scope: dashboard collector/
+   aggregator 의 실제 metric 계산"*) and should not be tracked in the
+   per-plugin coverage manifest.
+
+### Changed
+
+- **`scripts/check-catalog-drift.js`** —
+  - `parseSuiteCatalogTable` heading regex loosened from
+    `^## Catalog \(\d+ tests?\)` to `^## Catalog\b`. The heading is now
+    treated as a table anchor only; tracked scope is governed by manifest
+    contents, not heading text.
+  - `diffCatalog` return shape changed from `string[]` to
+    `{ diffs: string[], outOfScope: row[] }`. The new `outOfScope` list
+    holds table rows whose id exceeds `max(manifest.tests.id)` — these
+    are suite-side extensions the dashboard has not adopted for per-plugin
+    coverage aggregation.
+  - `main()` prints out-of-scope rows as info (`[catalog-drift] info —
+    N suite-repo row(s) beyond dashboard scope (id > N)`) but exits 0.
+    Within-horizon drift still exits 1 as before.
+
+### Why a horizon mechanism (not a manifest expansion)
+
+`lib/test-catalog-manifest.json` is the source of truth for the
+`suite.tests.coverage_per_plugin` aggregation, and is asserted to hold
+exactly 8 entries (the M5.5 contract — see
+`lib/test-catalog-manifest.test.js`). Adding §9 to the manifest would
+re-define the M5.5 contract and shift the coverage metric semantics for
+the `suite` pseudo-plugin. The horizon mechanism preserves the M5.5
+contract while letting the suite catalog grow freely.
+
+### Added
+
+- **`lib/check-catalog-drift.test.js`** (+2 tests, 10 → 12 in this file):
+  - `parseSuiteCatalogTable accepts loose heading text` — guards the
+    regex loosening with the real-world `## Catalog (3 M5.5 tests + 1
+    M5.7.B extension)` form.
+  - `diffCatalog reports out-of-scope rows beyond manifest horizon
+    without flagging drift` — pins the §9-style suite extension
+    behavior.
+- Existing `diffCatalog detects missing-from-manifest …` test rewritten
+  to drop id=2 (within horizon) instead of id=3 (= horizon boundary),
+  preserving regression coverage of the dashboard-side drop case.
+
+### Verification
+
+- `npm test` 261/261 green (up from 259/259; +2 horizon tests).
+- `SUITE_REPO_LOCAL=… npm run check:catalog-drift` against the live
+  suite catalog (`## Catalog (8 M5.5 tests + 1 M5.7.B extension)`, 9
+  rows) now prints `info — 1 suite-repo row(s) beyond dashboard scope
+  (id > 8): · id=9 "cross-plugin e2e fixture roundtrip" (suite-side;
+  not aggregated by dashboard)` and exits 0.
+
+### Out of scope
+
+No `aggregator.js`, manifest, metric, or schema change. The §1-§8
+"M5.5 contract" still holds. When a maintainer decides to promote §9
+(or any future §10) into per-plugin coverage, the procedure is the
+same as before: add the entry to `lib/test-catalog-manifest.json` and
+bump the `exactly 8 entries` assertion in
+`lib/test-catalog-manifest.test.js`.
+
+### Also fixed (bundled CI infrastructure)
+
+- **`package.json` — `test` script glob portability**. The previous
+  `node --test "lib/**/*.test.js"` form has been failing on the
+  `Tests` GitHub Actions workflow since 2026-05-13 (PR #15 + #16
+  merges). Ubuntu bash does not expand `**` without
+  `shopt -s globstar`, and Node 20 `--test` does not natively support
+  glob patterns (added in Node 21+). The script gets the literal
+  string and fails with `Could not find …/lib/**/*.test.js`. macOS
+  zsh expands `**` natively, masking the bug locally.
+  Switched to `node --test $(find lib -name '*.test.js')` —
+  command-substitution-based file enumeration works in both bash and
+  zsh, and is portable across all `node:test`-supported versions.
+  Confirmed 261/261 pass on Ubuntu CI.
+
 ## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip guard)
 
 Test-only addition pairing with the suite-side regression guard
