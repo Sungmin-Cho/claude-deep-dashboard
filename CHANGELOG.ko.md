@@ -2,6 +2,77 @@
 
 # 변경 이력
 
+## [1.3.5] — 2026-05-16 — catalog-drift horizon mechanism (CI fix)
+
+`Catalog Drift Check` CI 워크플로우가 suite-side commit `688370e`
+(2026-05-12) 이후 매일 실패해 왔다. 해당 commit은 suite 측 heading 을
+`## Catalog (8 tests)` → `## Catalog (8 M5.5 tests + 1 M5.7.B extension)`
+로 변경하고 §9 (suite-side e2e regression guard) 를 추가했다.
+
+`check-catalog-drift.js` 가 가정하던 두 가지 contract 가 동시에 깨졌다:
+1. heading regex `^## Catalog \(\d+ tests?\)` 가 새 annotated 형식을
+   매치하지 못함 (현재 노출된 실패 메시지: `table parse failed: catalog
+   table heading not found`).
+2. regex 를 풀어도 §9 row 는 `id=9 missing-from-manifest` drift 로
+   잡힘 — 그러나 §9 는 의도적으로 suite-side scope (suite commit
+   message: *"Out of scope: dashboard collector/aggregator 의 실제
+   metric 계산"*) 이며 per-plugin coverage manifest 에 포함되어서는
+   안 된다.
+
+### 변경
+
+- **`scripts/check-catalog-drift.js`** —
+  - `parseSuiteCatalogTable` heading regex 를
+    `^## Catalog \(\d+ tests?\)` → `^## Catalog\b` 로 완화. heading 은
+    이제 table anchor 일 뿐이며, tracked scope 는 manifest 내용이
+    결정한다 (heading text 가 아니다).
+  - `diffCatalog` return shape 가 `string[]` → `{ diffs: string[],
+    outOfScope: row[] }` 로 변경. 새 `outOfScope` list 는 id 가
+    `max(manifest.tests.id)` 를 초과하는 table row 를 담는다 — 이런
+    row 는 dashboard 가 per-plugin coverage aggregation 대상으로
+    채택하지 않은 suite-side 확장이다.
+  - `main()` 은 out-of-scope row 를 info 로 출력하고 (`[catalog-drift]
+    info — N suite-repo row(s) beyond dashboard scope (id > N)`)
+    exit 0. horizon 안의 drift 는 종전대로 exit 1.
+
+### 왜 horizon mechanism 인가 (manifest 확장이 아닌)
+
+`lib/test-catalog-manifest.json` 은 `suite.tests.coverage_per_plugin`
+metric aggregation 의 source of truth 이며, 정확히 8개 entry 를 가져야
+한다는 M5.5 계약이 `lib/test-catalog-manifest.test.js` 에 명시되어
+있다. manifest 에 §9 를 추가하면 M5.5 계약을 재정의하게 되고 `suite`
+가상 plugin 의 coverage metric 의미가 변한다. horizon mechanism 은
+M5.5 계약을 보존하면서 suite catalog 가 자유롭게 성장하도록 허용한다.
+
+### 추가
+
+- **`lib/check-catalog-drift.test.js`** (+2 tests, 10 → 12):
+  - `parseSuiteCatalogTable accepts loose heading text` — regex 완화를
+    real-world `## Catalog (3 M5.5 tests + 1 M5.7.B extension)` 형식
+    으로 고정.
+  - `diffCatalog reports out-of-scope rows beyond manifest horizon
+    without flagging drift` — §9 스타일 suite 확장 동작 pin.
+- 기존 `diffCatalog detects missing-from-manifest …` 테스트는
+  horizon 경계(id=3)가 아닌 id=2 (within horizon) 를 drop 하도록
+  재작성 — dashboard-side drop 케이스의 회귀 보호 유지.
+
+### 검증
+
+- `npm test` 261/261 green (259/259 → +2 horizon tests).
+- `SUITE_REPO_LOCAL=… npm run check:catalog-drift` 를 실제 suite
+  catalog (`## Catalog (8 M5.5 tests + 1 M5.7.B extension)`, 9 rows)
+  대상으로 실행하면 `info — 1 suite-repo row(s) beyond dashboard scope
+  (id > 8): · id=9 "cross-plugin e2e fixture roundtrip" (suite-side;
+  not aggregated by dashboard)` 를 출력하고 exit 0.
+
+### Out of scope
+
+`aggregator.js` / manifest / metric / schema 변경 없음. §1-§8 "M5.5
+contract" 그대로. 향후 §9 (또는 §10) 를 per-plugin coverage 로 promote
+하려면 기존 절차와 동일: `lib/test-catalog-manifest.json` 에 entry
+추가 + `lib/test-catalog-manifest.test.js` 의 `exactly 8 entries`
+assertion bump.
+
 ## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip 가드)
 
 Suite 측 회귀 가드(`claude-deep-suite/tests/handoff-roundtrip-fixtures.test.js`,
