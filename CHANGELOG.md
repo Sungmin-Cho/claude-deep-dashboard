@@ -76,6 +76,21 @@ same as before: add the entry to `lib/test-catalog-manifest.json` and
 bump the `exactly 8 entries` assertion in
 `lib/test-catalog-manifest.test.js`.
 
+### Also fixed (bundled CI infrastructure)
+
+- **`package.json` — `test` script glob portability**. The previous
+  `node --test "lib/**/*.test.js"` form has been failing on the
+  `Tests` GitHub Actions workflow since 2026-05-13 (PR #15 + #16
+  merges). Ubuntu bash does not expand `**` without
+  `shopt -s globstar`, and Node 20 `--test` does not natively support
+  glob patterns (added in Node 21+). The script gets the literal
+  string and fails with `Could not find …/lib/**/*.test.js`. macOS
+  zsh expands `**` natively, masking the bug locally.
+  Switched to `node --test $(find lib -name '*.test.js')` —
+  command-substitution-based file enumeration works in both bash and
+  zsh, and is portable across all `node:test`-supported versions.
+  Confirmed 261/261 pass on Ubuntu CI.
+
 ## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip guard)
 
 Test-only addition pairing with the suite-side regression guard

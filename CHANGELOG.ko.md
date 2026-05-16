@@ -73,6 +73,21 @@ contract" 그대로. 향후 §9 (또는 §10) 를 per-plugin coverage 로 promot
 추가 + `lib/test-catalog-manifest.test.js` 의 `exactly 8 entries`
 assertion bump.
 
+### 함께 수정 (CI 인프라 번들)
+
+- **`package.json` — `test` 스크립트 glob 이식성**. 기존
+  `node --test "lib/**/*.test.js"` 형식이 2026-05-13 (PR #15 + #16
+  merge) 이후 `Tests` GitHub Actions workflow 에서 계속 실패해 왔다.
+  Ubuntu bash 는 `shopt -s globstar` 없이는 `**` 를 expand 하지 않고,
+  Node 20 의 `--test` 는 glob pattern 을 native 로 지원하지 않는다
+  (Node 21+ 추가). 결과적으로 스크립트는 literal string 을 받아
+  `Could not find …/lib/**/*.test.js` 로 실패한다. macOS zsh 는
+  `**` 를 native 로 expand 하므로 local 에서는 버그가 가려졌다.
+  `node --test $(find lib -name '*.test.js')` 로 전환 —
+  command-substitution 기반 파일 열거는 bash/zsh 모두에서 동작하며
+  `node:test` 지원 모든 버전에서 이식 가능. Ubuntu CI 에서 261/261
+  pass 확인.
+
 ## [1.3.4] — 2026-05-12 — M5.7.B suite §9 consumer-side e2e (cross-plugin roundtrip 가드)
 
 Suite 측 회귀 가드(`claude-deep-suite/tests/handoff-roundtrip-fixtures.test.js`,

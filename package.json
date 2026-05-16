@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test \"lib/**/*.test.js\"",
+    "test": "node --test $(find lib -name '*.test.js')",
     "validate:envelope": "node scripts/validate-envelope-emit.js",
     "check:catalog-drift": "node scripts/check-catalog-drift.js",
     "check:version-sync": "node scripts/check-version-sync.js"
