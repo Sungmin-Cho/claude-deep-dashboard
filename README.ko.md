@@ -4,6 +4,10 @@
 
 [deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
 
+## Codex 호환성
+
+이번 릴리스는 `.codex-plugin/plugin.json` Codex 네이티브 플러그인 메타데이터와 `AGENTS.md` Codex 프로젝트 가이드를 포함합니다. Claude Code 매니페스트는 `.claude-plugin/plugin.json`에 그대로 유지되며, 기존 `claude-deep-suite` marketplace namespace를 유지해 기존 설치 키를 보존하면서 Codex는 suite의 `.agents/plugins/marketplace.json`을 읽습니다.
+
 deep-dashboard는 세 가지 기능을 제공합니다:
 
 1. **Harnessability 진단** — 코드베이스의 "harness 가능성"을 6개 차원으로 완전히 계산하여 0–10점 점수와 실행 가능한 권장 사항을 제공합니다.

@@ -28,13 +28,13 @@ To check the current version: `jq -r .version .claude-plugin/plugin.json`
 
 Update the following in `/Users/sungmin/Dev/claude-plugins/deep-suite/`:
 
-- **`.claude-plugin/marketplace.json`** — under the `deep-dashboard` entry: `sha` = full 40-character merge commit hash on the new `main`; description = one-line headline summary.
+- **`.claude-plugin/marketplace.json`** and **`.agents/plugins/marketplace.json`** — under the `deep-dashboard` entry: `sha` = full 40-character merge commit hash on the new `main`; description = one-line headline summary.
 - **`README.md`** / **`README.ko.md`** — the `deep-dashboard` row in the Plugins table and any narrative sections that reference the version.
 
 After editing:
 ```bash
 cd /Users/sungmin/Dev/claude-plugins/deep-suite
-git add .claude-plugin/marketplace.json README.md README.ko.md
+git add .claude-plugin/marketplace.json .agents/plugins/marketplace.json README.md README.ko.md
 git commit -m "chore: bump deep-dashboard to vX.Y.Z — <one-line summary>"
 git push
 ```
@@ -42,7 +42,7 @@ git push
 ### 2. Update deep-dashboard CHANGELOG (required)
 
 - Add a new version entry to `CHANGELOG.md`
-- Bump the version in `.claude-plugin/plugin.json` and `package.json`
+- Bump the version in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `package.json`
 - Run `npm run check:version-sync` to confirm `plugin.json.version === package.json.version`
 
 **Do NOT inline release notes in this CLAUDE.md** — CHANGELOG is the single source of truth.
@@ -53,7 +53,8 @@ git push
 
 ```
 deep-dashboard/
-├── .claude-plugin/plugin.json     # plugin manifest; declares /deep-harnessability + /deep-harness-dashboard skills
+├── .claude-plugin/plugin.json
+├── .codex-plugin/plugin.json     # plugin manifest; declares /deep-harnessability + /deep-harness-dashboard skills
 ├── package.json                    # @deep-suite/deep-dashboard (Node 20+, ESM)
 ├── lib/
 │   ├── harnessability/
