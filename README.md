@@ -4,6 +4,10 @@
 
 Cross-plugin harness diagnostics for the [deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) ecosystem.
 
+## Codex Compatibility
+
+This release includes native Codex plugin metadata in `.codex-plugin/plugin.json` and a Codex project guide in `AGENTS.md`. The Claude Code manifest remains in `.claude-plugin/plugin.json`, and the unchanged `claude-deep-suite` marketplace namespace lets existing installs keep their plugin keys while Codex reads the suite's `.agents/plugins/marketplace.json`.
+
 deep-dashboard provides three capabilities:
 
 1. **Harnessability Diagnosis** — a fully computational 6-dimension assessment of how "harness-able" a codebase is, with a 0–10 score and actionable recommendations.

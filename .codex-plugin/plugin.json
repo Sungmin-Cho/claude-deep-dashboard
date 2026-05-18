@@ -1,0 +1,38 @@
+{
+  "name": "deep-dashboard",
+  "version": "1.3.6",
+  "description": "Cross-plugin harness diagnostics and suite telemetry for the Deep Suite ecosystem",
+  "author": {
+    "name": "sungmin"
+  },
+  "homepage": "https://github.com/Sungmin-Cho/claude-deep-dashboard",
+  "repository": "https://github.com/Sungmin-Cho/claude-deep-dashboard.git",
+  "license": "MIT",
+  "keywords": [
+    "harness",
+    "dashboard",
+    "harnessability",
+    "diagnostics",
+    "deep-suite"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Deep Dashboard",
+    "shortDescription": "Cross-plugin harness diagnostics",
+    "longDescription": "Score harnessability, collect cross-plugin telemetry, and render Deep Suite diagnostic dashboards from envelope-wrapped artifacts.",
+    "developerName": "sungmin",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "$deep-dashboard:deep-harnessability",
+      "$deep-dashboard:deep-harness-dashboard",
+      "$deep-dashboard:deep-harness-dashboard --suite"
+    ],
+    "brandColor": "#7C3AED",
+    "screenshots": []
+  }
+}

@@ -2,6 +2,22 @@
 
 # Changelog
 
+## [1.3.6] — 2026-05-18 (Codex-native plugin manifest and AGENTS guide)
+
+### Added
+
+- **`.codex-plugin/plugin.json`** — Codex-native plugin manifest pointing at the same skill and hook surfaces as the Claude Code manifest while preserving the existing `claude-deep-*` repository identity.
+- **`AGENTS.md`** — Codex project guide covering runtime surfaces, verification commands, and the downstream suite marketplace update requirement.
+
+### Changed
+
+- Version bumped 1.3.5 → 1.3.6 across package and plugin manifests for a patch release.
+- README documentation now calls out Codex compatibility alongside the existing Claude Code surface.
+
+### Verification
+
+- Repository validation was run before release; see the PR checklist for the exact command output.
+
 ## [1.3.5] — 2026-05-16 — catalog-drift horizon mechanism (CI fix)
 
 The `Catalog Drift Check` CI workflow has been failing on `main` daily
