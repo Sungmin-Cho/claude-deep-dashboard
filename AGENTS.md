@@ -4,7 +4,7 @@ Cross-plugin harness diagnostics and suite telemetry for the Deep Suite
 ecosystem. This repo keeps Claude Code compatibility and exposes Codex-native
 manifest metadata.
 
-Current version: 1.3.6.
+Current version: 1.3.7.
 
 ## Runtime Surfaces
 

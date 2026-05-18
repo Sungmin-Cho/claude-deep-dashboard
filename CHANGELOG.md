@@ -2,6 +2,26 @@
 
 # Changelog
 
+## [1.3.7] — 2026-05-18 (Codex skill directory layout)
+
+### Changed
+
+- Moved Codex skill surfaces from direct `skills/*.md` files to
+  `skills/<skill>/SKILL.md` directories so Codex can discover
+  `deep-harnessability` and `deep-harness-dashboard` from the manifest's
+  `"skills": "./skills/"` root.
+- Updated the project structure guide to document the directory-based skill
+  layout.
+
+### Added
+
+- `lib/codex-skill-layout.test.js` guards the Codex skill root against direct
+  markdown files and requires every skill directory to contain `SKILL.md`.
+
+### Verification
+
+- `npm test`
+
 ## [1.3.6] — 2026-05-18 (Codex-native plugin manifest and AGENTS guide)
 
 ### Added

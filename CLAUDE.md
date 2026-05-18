@@ -74,8 +74,10 @@ deep-dashboard/
 │   ├── otel.js                     # optional OTel/HTTP-JSON export (OTEL_EXPORTER_OTLP_ENDPOINT)
 │   └── *.test.js                   # 259 unit tests (metric math, roundtrip, envelope, edge cases)
 ├── skills/
-│   ├── deep-harnessability.md      # /deep-harnessability — scorer + bar chart + top 3 recommendations
-│   └── deep-harness-dashboard.md   # /deep-harness-dashboard [--suite] — aggregated view + telemetry
+│   ├── deep-harnessability/
+│   │   └── SKILL.md                # /deep-harnessability — scorer + bar chart + top 3 recommendations
+│   └── deep-harness-dashboard/
+│       └── SKILL.md                # /deep-harness-dashboard [--suite] — aggregated view + telemetry
 ├── scripts/
 │   ├── validate-envelope-emit.js   # emit-validator (producer_version sync, identity-triple, payload shape)
 │   ├── check-catalog-drift.js      # detects drift between local manifest and suite test-catalog.md
