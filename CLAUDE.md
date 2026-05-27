@@ -6,6 +6,8 @@ For detailed version history see [`CHANGELOG.md`](CHANGELOG.md). This file is in
 
 To check the current version: `jq -r .version .claude-plugin/plugin.json`
 
+> 📄 **Docs maintenance**: this repo's documentation follows `docs/DOCS_RULE.md` (local maintainer guide — single-source-of-truth rules for README / CHANGELOG / this file).
+
 ---
 
 ## Project Overview
@@ -72,7 +74,7 @@ deep-dashboard/
 │   ├── suite-constants.js          # ENVELOPE_ROLLOUT dates, ADOPTION_LEDGER, EXPECTED_SOURCES,
 │   │                                # PAYLOAD_REQUIRED_FIELDS (minimal field checks)
 │   ├── otel.js                     # optional OTel/HTTP-JSON export (OTEL_EXPORTER_OTLP_ENDPOINT)
-│   └── *.test.js                   # 259 unit tests (metric math, roundtrip, envelope, edge cases)
+│   └── *.test.js                   # unit tests (metric math, roundtrip, envelope, edge cases)
 ├── skills/
 │   ├── deep-harnessability/
 │   │   └── SKILL.md                # /deep-harnessability — scorer + bar chart + top 3 recommendations
@@ -211,7 +213,7 @@ The harnessability scorer walks **upward from its own module path** (`lib/harnes
 ## Tests
 
 ```bash
-npm test                    # node --test on lib/**/*.test.js (259 cases)
+npm test                    # node --test on lib/**/*.test.js
 npm run validate:envelope   # producer_version + identity + shape
 npm run check:catalog-drift # lib/test-catalog-manifest.json vs suite docs/test-catalog.md
 npm run check:version-sync  # plugin.json.version === package.json.version
