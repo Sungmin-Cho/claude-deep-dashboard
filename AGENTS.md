@@ -4,7 +4,10 @@ Cross-plugin harness diagnostics and suite telemetry for the Deep Suite
 ecosystem. This repo keeps Claude Code compatibility and exposes Codex-native
 manifest metadata.
 
-Current version: 1.3.7.
+To check the current version: `jq -r .version .claude-plugin/plugin.json`.
+For version history, see [`CHANGELOG.md`](CHANGELOG.md).
+
+> 📄 **Docs maintenance**: this repo's documentation follows `docs/DOCS_RULE.md` (local maintainer guide — single-source-of-truth rules for README / CHANGELOG / agent guides).
 
 ## Runtime Surfaces
 
