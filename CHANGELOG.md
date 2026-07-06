@@ -7,6 +7,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-07-07 (honest wiki metrics + session effectiveness revival)
+
+### Added
+
+- `ingest_actions_total` — a new wiki metric that counts actual ingest actions, the honest signal that replaces the misleading `auto_ingest_candidates_total`.
+- Effectiveness reports a **session** dimension again, reconstructed from a union over emitted `session-receipt` artifacts.
+
+### Changed
+
+- `auto_ingest_candidates_total` is **deprecated** — it counted candidates rather than performed actions, overstating activity. It is retained one release for back-compat and superseded by `ingest_actions_total`.
+
+### Fixed
+
+- Payload `schema.version` MAJOR is now guarded at both unwrap seams, so a future incompatible payload MAJOR is rejected instead of silently mis-parsed.
+- `wiki-index` project-local fallback path was missing the `.wiki-meta` segment; the fallback now resolves the correct location.
+
 ## [1.3.7] — 2026-05-18 (Codex skill directory layout)
 
 ### Changed

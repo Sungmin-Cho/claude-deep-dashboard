@@ -7,6 +7,22 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 를 따르며,
 [유의적 버전](https://semver.org/spec/v2.0.0.html) 을 준수합니다.
 
+## [1.4.0] — 2026-07-07 (정직한 wiki 메트릭 + session effectiveness 부활)
+
+### 추가
+
+- `ingest_actions_total` — 실제 ingest 액션 수를 세는 새 wiki 메트릭. 오도하는 `auto_ingest_candidates_total` 을 대신하는 정직한 신호다.
+- effectiveness 가 다시 **session** 차원을 보고한다 — emit 된 `session-receipt` 아티팩트들의 union 으로 재구성.
+
+### 변경
+
+- `auto_ingest_candidates_total` 를 **deprecate** — 수행된 액션이 아니라 후보를 세어 활동을 과대 표시했다. back-compat 을 위해 한 릴리스 동안 유지되며 `ingest_actions_total` 로 대체된다.
+
+### 수정
+
+- payload `schema.version` MAJOR 를 두 unwrap seam 모두에서 가드하여, 미래의 비호환 payload MAJOR 가 조용히 오파싱되는 대신 거부된다.
+- `wiki-index` project-local fallback 경로에 `.wiki-meta` 세그먼트가 빠져 있던 문제 — fallback 이 이제 올바른 위치를 resolve 한다.
+
 ## [1.3.7] — 2026-05-18 (Codex skill 디렉터리 레이아웃)
 
 ### 변경
