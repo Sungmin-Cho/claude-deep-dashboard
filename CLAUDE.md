@@ -16,7 +16,7 @@ To check the current version: `jq -r .version .claude-plugin/plugin.json`
 
 **Two distinct surfaces:**
 1. **Harnessability scorer** (`/deep-harnessability`) — pure-computational 6-dimension assessment of the codebase itself (17 detectors). Output: `.deep-dashboard/harnessability-report.json` (M3 envelope) and a bar-chart report.
-2. **Suite collector + dashboard** (`/deep-harness-dashboard`, optionally `--suite`) — reads 11 cross-plugin sources (8 M3 envelopes + 3 NDJSON logs), computes 16 metrics (12 M4-core + 4 M5), and renders a unified dashboard.
+2. **Suite collector + dashboard** (`/deep-harness-dashboard`, optionally `--suite`) — reads 11 cross-plugin sources (8 M3 envelopes + 3 NDJSON logs), computes 17 metrics (13 M4-core + 4 M5), and renders a unified dashboard.
 
 **Marketplace presence**: One of six plugins in the [claude-deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) marketplace.
 
@@ -68,9 +68,9 @@ deep-dashboard/
 │   │   ├── effectiveness.js        # 5-dimension scorer with weight redistribution
 │   │   └── action-router.js        # suggests actions (npm audit fix, remove dead exports, …)
 │   ├── suite-collector.js          # M4 collector for 11 cross-plugin sources (8 envelopes + 3 NDJSON)
-│   ├── aggregator.js               # computes 16 M4/M5 metrics from raw snapshot
+│   ├── aggregator.js               # computes 17 M4/M5 metrics from raw snapshot
 │   ├── suite-formatter.js          # renders .deep-dashboard/suite-report.md with trend arrows
-│   ├── metrics-catalog.yaml        # authoritative spec for all 16 metrics
+│   ├── metrics-catalog.yaml        # authoritative spec for all 17 metrics
 │   ├── suite-constants.js          # ENVELOPE_ROLLOUT dates, ADOPTION_LEDGER, EXPECTED_SOURCES,
 │   │                                # PAYLOAD_REQUIRED_FIELDS (minimal field checks)
 │   ├── otel.js                     # optional OTel/HTTP-JSON export (OTEL_EXPORTER_OTLP_ENDPOINT)
@@ -123,9 +123,9 @@ payload (REQUIRED, per lib/suite-constants.js PAYLOAD_REQUIRED_FIELDS):
 
 ### Suite telemetry — `.deep-dashboard/suite-metrics.jsonl`
 
-Append-only JSONL, one object per `/deep-harness-dashboard --suite` run. **16 metrics**:
+Append-only JSONL, one object per `/deep-harness-dashboard --suite` run. **17 metrics**:
 
-- **M4-core (12)**: `suite.hooks.{block_rate, error_rate}`, `suite.artifact.freshness_seconds`, `suite.artifact.schema_failures_total`, `suite.integrate.recommendation_accept_rate`, `suite.review.verdict_mix` (distribution), `suite.review.recurring_finding_count`, `suite.wiki.auto_ingest_candidates_total`, `suite.docs.auto_fix_accept_rate`, `suite.evolve.q_delta_per_epoch`, `suite.dashboard.missing_signal_ratio`, `suite.cross_plugin.run_id_chain_completeness`
+- **M4-core (13)**: `suite.hooks.{block_rate, error_rate}`, `suite.artifact.freshness_seconds`, `suite.artifact.schema_failures_total`, `suite.integrate.recommendation_accept_rate`, `suite.review.verdict_mix` (distribution), `suite.review.recurring_finding_count`, `suite.wiki.auto_ingest_candidates_total` (**deprecated** — value pinned `null`, wire key preserved; producer has no durable candidate signal), `suite.wiki.ingest_actions_total` (ingest/ingest-skip/ingest-repair/ingest-fail from deep-wiki `log.jsonl`), `suite.docs.auto_fix_accept_rate`, `suite.evolve.q_delta_per_epoch`, `suite.dashboard.missing_signal_ratio`, `suite.cross_plugin.run_id_chain_completeness`
 - **M5 (4)**: `suite.compaction.{frequency, preserved_artifact_ratio}`, `suite.handoff.roundtrip_success_rate`, `suite.tests.coverage_per_plugin` (per-plugin distribution)
 
 ### Null semantics
