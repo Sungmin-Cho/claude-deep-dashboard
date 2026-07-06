@@ -46,7 +46,7 @@ codex plugin install deep-dashboard
 |---|---|
 | `/deep-harnessability` | 현재 코드베이스를 6차원으로 채점하고 막대 차트를 렌더, `.deep-dashboard/harnessability-report.json` 기록. |
 | `/deep-harness-dashboard` | 사용 가능한 플러그인 데이터를 집계해 통합 효과성 대시보드 렌더(`--json` 으로 JSON). |
-| `/deep-harness-dashboard --suite` | 16-메트릭 크로스 플러그인 텔레메트리 시계열 + markdown trend report 누적; 옵션 OTel export. |
+| `/deep-harness-dashboard --suite` | 17-메트릭 크로스 플러그인 텔레메트리 시계열 + markdown trend report 누적; 옵션 OTel export. |
 
 ### `/deep-harnessability`
 
@@ -139,7 +139,7 @@ codex plugin install deep-dashboard
 
 ## Suite 텔레메트리 (`--suite`)
 
-Suite 모드는 단일 스냅샷 대시보드의 opt-in superset 이다. legacy 모드가 5개 소스에서 일회성 효과성 뷰를 렌더하는 반면, suite 모드는 6개 deep-suite 플러그인 전체에 걸친 16개 크로스 플러그인 메트릭의 **시계열** 을 누적하며 OTel 관측성의 기반이다.
+Suite 모드는 단일 스냅샷 대시보드의 opt-in superset 이다. legacy 모드가 5개 소스에서 일회성 효과성 뷰를 렌더하는 반면, suite 모드는 6개 deep-suite 플러그인 전체에 걸친 17개 크로스 플러그인 메트릭의 **시계열** 을 누적하며 OTel 관측성의 기반이다.
 
 11개 소스(8개 M3 envelope artifact + 3개 NDJSON 이벤트 로그)를 읽으며, 프로젝트 root 밖의 vault 를 위해 `options.wikiRoot` / `DEEP_WIKI_ROOT` 를 존중한다. authoritative 메트릭 카탈로그는 [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml) 이며, 모든 메트릭이 소스, 집계 공식, `null_when` 시멘틱을 담고 있다.
 
@@ -152,7 +152,8 @@ Suite 모드는 단일 스냅샷 대시보드의 opt-in superset 이다. legacy 
 | M4-core | `suite.integrate.recommendation_accept_rate` | Phase 5 Integrate accept rate. |
 | M4-core | `suite.review.verdict_mix` | APPROVE / CONCERN / REQUEST_CHANGES 분포. |
 | M4-core | `suite.review.recurring_finding_count` | 발생 횟수 ≥ 2 인 finding. |
-| M4-core | `suite.wiki.auto_ingest_candidates_total` | SessionStart auto-ingest 감지 수. |
+| M4-core | `suite.wiki.auto_ingest_candidates_total` | **Deprecated** (항상 `null`): producer 에 내구 candidate 신호 없음; wire key 는 보존. |
+| M4-core | `suite.wiki.ingest_actions_total` | deep-wiki `log.jsonl` 의 ingest lifecycle 활동량 (`ingest`, `ingest-skip`, `ingest-repair`, `ingest-fail`). |
 | M4-core | `suite.docs.auto_fix_accept_rate` | deep-docs garden auto-fix 수락률. |
 | M4-core | `suite.evolve.q_delta_per_epoch` | epoch 당 품질 delta. |
 | M4-core | `suite.dashboard.missing_signal_ratio` | 누락/무효 expected 소스 비율. |

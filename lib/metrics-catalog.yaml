@@ -164,14 +164,33 @@ metrics:
   - id: suite.wiki.auto_ingest_candidates_total
     tier: M4-core
     unit: count
-    description: "Cumulative SessionStart auto-ingest candidate detection count from deep-wiki log.jsonl."
+    deprecated: true
+    deprecated_reason: >-
+      Unimplementable definition: deep-wiki has no durable candidate signal —
+      log.jsonl carries no candidate-detection action (detection only leaves
+      the transient, consumed .wiki-meta/.pending-scan watermark), and the
+      previously-matched vocabulary (event: auto-ingest-candidate /
+      session-start-detect) does not exist in the producer. Value is pinned
+      to null ("unmeasurable = null"); the wire key is preserved for
+      snapshot-shape compat (key removal = versioned contract change only).
+      Do not route ingest throughput into this name.
+    replaced_by: suite.wiki.ingest_actions_total
+    description: "DEPRECATED (always null): SessionStart auto-ingest candidate detection count — producer has no durable candidate signal."
+    source: []  # deprecated — no source consumed; value pinned to null
+    aggregation: "none — value pinned to null (wire-key preservation only)."
+    null_when: "always (deprecated)"
+
+  - id: suite.wiki.ingest_actions_total
+    tier: M4-core
+    unit: count
+    description: "Cumulative ingest lifecycle activity (ingest, ingest-skip, ingest-repair, ingest-fail — failures included) from deep-wiki log.jsonl."
     source:
       - producer: deep-wiki
         kind: log
         path_glob: ".deep-wiki/log.jsonl"  # or <wiki_root>/log.jsonl when DEEP_WIKI_ROOT set
         schema_id: null  # NDJSON event log
-    aggregation: "count(line where parsed.event == 'auto-ingest-candidate' OR parsed.event == 'session-start-detect')."
-    null_when: "log.jsonl missing or unreadable (file exists with 0 matching events → emits 0, not null)"
+    aggregation: "count(line where parsed.action in {'ingest','ingest-skip','ingest-repair','ingest-fail'}) — real wiki-schema.yaml vocabulary (field `action`, not `event`); ingest-fail counts so failure storms cannot masquerade as reduced activity."
+    null_when: "log.jsonl missing or unreadable (file exists with 0 matching lines → emits 0, not null)"
 
   - id: suite.docs.auto_fix_accept_rate
     tier: M4-core

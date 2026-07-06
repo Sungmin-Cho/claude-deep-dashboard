@@ -46,7 +46,7 @@ After installation two skills become available in any session:
 |---|---|
 | `/deep-harnessability` | Score the current codebase across 6 dimensions; render a bar chart; write `.deep-dashboard/harnessability-report.json`. |
 | `/deep-harness-dashboard` | Aggregate available plugin data and render the unified effectiveness dashboard (`--json` for JSON). |
-| `/deep-harness-dashboard --suite` | Accumulate the 16-metric cross-plugin telemetry time-series + markdown trend report; optional OTel export. |
+| `/deep-harness-dashboard --suite` | Accumulate the 17-metric cross-plugin telemetry time-series + markdown trend report; optional OTel export. |
 
 ### `/deep-harnessability`
 
@@ -139,7 +139,7 @@ If a dimension has no data, its weight is redistributed proportionally to the av
 
 ## Suite telemetry (`--suite`)
 
-Suite mode is an opt-in superset of the single-snapshot dashboard. Where legacy mode renders a one-shot effectiveness view from 5 sources, suite mode accumulates a **time-series** of 16 cross-plugin metrics across all 6 deep-suite plugins, and is the substrate for OTel observability.
+Suite mode is an opt-in superset of the single-snapshot dashboard. Where legacy mode renders a one-shot effectiveness view from 5 sources, suite mode accumulates a **time-series** of 17 cross-plugin metrics across all 6 deep-suite plugins, and is the substrate for OTel observability.
 
 It reads 11 sources (8 M3 envelope artifacts + 3 NDJSON event logs), honoring `options.wikiRoot` / `DEEP_WIKI_ROOT` for vaults outside the project root. The authoritative metric catalog is [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric carries its sources, aggregation formula, and `null_when` semantics.
 
@@ -152,7 +152,8 @@ It reads 11 sources (8 M3 envelope artifacts + 3 NDJSON event logs), honoring `o
 | M4-core | `suite.integrate.recommendation_accept_rate` | Phase 5 Integrate accept rate. |
 | M4-core | `suite.review.verdict_mix` | APPROVE / CONCERN / REQUEST_CHANGES split. |
 | M4-core | `suite.review.recurring_finding_count` | Findings with occurrences ≥ 2. |
-| M4-core | `suite.wiki.auto_ingest_candidates_total` | SessionStart auto-ingest detection count. |
+| M4-core | `suite.wiki.auto_ingest_candidates_total` | **Deprecated** (always `null`): producer has no durable candidate signal; wire key preserved. |
+| M4-core | `suite.wiki.ingest_actions_total` | Ingest lifecycle activity (`ingest`, `ingest-skip`, `ingest-repair`, `ingest-fail`) from deep-wiki `log.jsonl`. |
 | M4-core | `suite.docs.auto_fix_accept_rate` | deep-docs garden auto-fix acceptance rate. |
 | M4-core | `suite.evolve.q_delta_per_epoch` | Per-epoch quality delta. |
 | M4-core | `suite.dashboard.missing_signal_ratio` | Fraction of expected sources missing or invalid. |

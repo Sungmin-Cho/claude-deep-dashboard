@@ -1,6 +1,6 @@
 ---
 name: deep-harness-dashboard
-description: This skill should be used when the user asks for a cross-plugin harness summary, effectiveness score, action routing, or suite-level telemetry across deep-work / deep-review / deep-docs / deep-evolve / deep-wiki. Trigger phrases include "harness 대시보드 보여줘", "전체 sensor 통합 리포트", "suite metrics 누적", "trend report 만들어줘", "OTLP 로 내보내", "show the harness dashboard", "cross-plugin telemetry", "deep-suite snapshot". Two modes — legacy (default) aggregates 5 envelope/legacy sources for an effectiveness snapshot; suite mode (`--suite`, since v1.3.0) accumulates 16 metrics from 11 sources into `.deep-dashboard/suite-metrics.jsonl`, renders `.deep-dashboard/suite-report.md`, and optionally exports to OTLP/HTTP-JSON when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+description: This skill should be used when the user asks for a cross-plugin harness summary, effectiveness score, action routing, or suite-level telemetry across deep-work / deep-review / deep-docs / deep-evolve / deep-wiki. Trigger phrases include "harness 대시보드 보여줘", "전체 sensor 통합 리포트", "suite metrics 누적", "trend report 만들어줘", "OTLP 로 내보내", "show the harness dashboard", "cross-plugin telemetry", "deep-suite snapshot". Two modes — legacy (default) aggregates 5 envelope/legacy sources for an effectiveness snapshot; suite mode (`--suite`, since v1.3.0) accumulates 17 metrics from 11 sources into `.deep-dashboard/suite-metrics.jsonl`, renders `.deep-dashboard/suite-report.md`, and optionally exports to OTLP/HTTP-JSON when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 ---
 
 # Harness Dashboard
@@ -10,7 +10,7 @@ Aggregates cross-plugin sensor data into a unified view. Two modes:
 - **Legacy mode** (default) — envelope-aware single-snapshot dashboard with
   effectiveness scoring and action routing. Reads 5 sources (deep-work,
   deep-review legacy, deep-docs, deep-evolve, harnessability self).
-- **Suite mode** (`--suite`, M4) — accumulates time-series metrics for all 16
+- **Suite mode** (`--suite`, M4) — accumulates time-series metrics for all 17
   suite-level signals defined in `lib/metrics-catalog.yaml`. Appends to
   `.deep-dashboard/suite-metrics.jsonl`, renders trend report
   (`.deep-dashboard/suite-report.md`), and optionally exports to OTLP/HTTP-JSON.
@@ -65,10 +65,12 @@ imports from `lib/dashboard/` (legacy) and `lib/` (suite).
    sources: 8 envelope artifacts (M3-compliant) + 3 NDJSON event logs (2 hook
    logs + deep-wiki vault log). Honors `options.wikiRoot` or `DEEP_WIKI_ROOT`
    for external wiki vaults.
-2. Run `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 16
-   M4 metrics: 12 M4-core (computed) + 3 M5-activated + 1 M5.5-activated
-   (all currently in the core tier; `lib/metrics-catalog.yaml` is the
-   canonical list).
+2. Run `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17
+   M4 metrics: 13 M4-core (computed; includes the deprecated
+   `suite.wiki.auto_ingest_candidates_total` wire key pinned `null` and its
+   replacement `suite.wiki.ingest_actions_total`) + 3 M5-activated +
+   1 M5.5-activated (all currently in the core tier;
+   `lib/metrics-catalog.yaml` is the canonical list).
 3. Run `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
    `.deep-dashboard/suite-metrics.jsonl` (append-only time series).
 4. Run `readRecentSnapshots(projectRoot, 2)` to fetch the trend baseline.
