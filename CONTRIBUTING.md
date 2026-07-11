@@ -12,16 +12,17 @@ git clone https://github.com/Sungmin-Cho/claude-deep-dashboard.git
 cd claude-deep-dashboard
 ```
 
-Node 20+ is required (ESM project). There are no runtime dependencies — the
+Node 22+ is required (ESM project) on Windows, macOS, and Linux. There are no runtime dependencies — the
 test runner is the built-in `node --test`, so there is nothing to `npm install`.
 
 ## Tests
 
 ```bash
-npm test                    # node --test on lib/**/*.test.js
+npm test                    # node --test "lib/**/*.test.js" "tests/**/*.test.js"
 npm run validate:envelope   # envelope contract self-test (producer_version + identity + shape)
 npm run check:catalog-drift # local test-catalog manifest vs the suite-repo source of truth
 npm run check:version-sync  # plugin.json.version === package.json.version
+node scripts/validate-codex-release-candidate.js --candidate-root "$PWD"
 ```
 
 Everything must be green before you open a PR. `check:catalog-drift` resolves

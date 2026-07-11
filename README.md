@@ -30,15 +30,45 @@ Via the `claude-deep-suite` marketplace:
 /plugin install deep-dashboard@claude-deep-suite
 
 # Codex
-codex plugin install deep-dashboard
+codex plugin marketplace add Sungmin-Cho/claude-deep-suite
+codex plugin add deep-dashboard@claude-deep-suite
 ```
 
-Or directly from this repo with `--source url` pointed at the GitHub URL.
+deep-dashboard supports Windows 11, macOS, and Linux with Node.js 22. The same
+two skills and Node entry points are available on every supported host.
 
-After installation two skills become available in any session:
+### Runtime and direct CLI routing
 
-- `/deep-harnessability`
-- `/deep-harness-dashboard`
+Claude Code and Codex pass the absolute path of the selected `SKILL.md` to the
+execution tool as `loadedSkillPath`. The skill derives the plugin root by
+walking up three directories from that loaded path, then invokes the scorer or
+dashboard with an absolute script path and an explicit target project root.
+`CLAUDE_PLUGIN_ROOT` is only Claude Code's bootstrap for locating the loaded
+skill; it is not a Codex variable and is never used as a target-project
+fallback.
+
+The host normally passes a shell-neutral Node argument vector. These are the
+equivalent fallback forms after resolving the plugin root absolutely:
+
+```text
+# POSIX
+node "/absolute/plugin/lib/harnessability/scorer.js" --project-root "$PWD"
+node "/absolute/plugin/scripts/dashboard-cli.js" --project-root "$PWD"
+
+# PowerShell
+node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
+node "C:\absolute\plugin\scripts\dashboard-cli.js" --project-root (Get-Location).Path
+```
+
+The PowerShell paths must be fully resolved from `loadedSkillPath`; do not pass
+`..` segments or infer the plugin location from the caller's current directory.
+
+After installation two skills become available in either host:
+
+| Skill | Claude Code | Codex |
+|---|---|---|
+| Harnessability | `/deep-harnessability` | `$deep-dashboard:deep-harnessability` |
+| Dashboard | `/deep-harness-dashboard` | `$deep-dashboard:deep-harness-dashboard` |
 
 ## Skills
 

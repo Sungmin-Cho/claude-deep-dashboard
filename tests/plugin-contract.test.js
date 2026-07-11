@@ -6,6 +6,15 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
+const readText = async (path) => readFile(path, 'utf8');
+
+function namedWorkflowStep(workflow, name) {
+  const marker = `      - name: ${name}`;
+  const start = workflow.indexOf(marker);
+  assert.notEqual(start, -1, `missing workflow step: ${name}`);
+  const next = workflow.indexOf('\n      - name:', start + marker.length);
+  return workflow.slice(start, next === -1 ? workflow.length : next);
+}
 
 test('Codex manifest is packageable and uses skill directories only', async () => {
   const manifest = await readJson('.codex-plugin/plugin.json');
@@ -40,6 +49,64 @@ test('release metadata and the positive envelope fixture are synchronized at 1.5
     assert.equal(manifest.version, '1.5.0');
   }
   assert.equal(envelopeFixture.envelope.producer_version, '1.5.0');
+});
+
+test('CI runs the pinned Codex release-candidate smoke in every Node 22 OS lane', async () => {
+  const workflow = await readText('.github/workflows/tests.yml');
+
+  assert.match(
+    workflow,
+    /strategy:\s*\n\s+fail-fast:\s*false\s*\n\s+matrix:\s*\n\s+os:\s*\[ubuntu-latest, macos-latest, windows-latest\]/
+  );
+  assert.match(workflow, /runs-on:\s*\$\{\{\s*matrix\.os\s*\}\}/);
+  assert.match(workflow, /node-version:\s*'22'/);
+
+  const install = namedWorkflowStep(workflow, 'Install pinned Codex CLI');
+  assert.match(install, /^\s*run:\s*npm install --global @openai\/codex@0\.144\.1\s*$/m);
+
+  const version = namedWorkflowStep(workflow, 'Verify pinned Codex CLI');
+  assert.match(version, /shell:\s*pwsh/);
+  assert.match(version, /\$actual = \(& codex --version\)\.Trim\(\)/);
+  assert.match(version, /\$actual -ne 'codex-cli 0\.144\.1'/);
+  assert.match(version, /\$LASTEXITCODE -ne 0/);
+
+  const candidate = namedWorkflowStep(
+    workflow,
+    'Install and discover isolated Codex release candidate'
+  );
+  assert.match(candidate, /shell:\s*pwsh/);
+  assert.match(candidate, /scripts\/validate-codex-release-candidate\.js/);
+  assert.match(candidate, /node \$script --candidate-root \(Get-Location\)\.Path/);
+  assert.match(candidate, /\$LASTEXITCODE -ne 0/);
+
+  for (const [name, block] of [
+    ['install', install],
+    ['version', version],
+    ['candidate', candidate]
+  ]) {
+    assert.doesNotMatch(block, /\bcontinue-on-error\s*:/, `${name} must fail closed`);
+    assert.doesNotMatch(block, /^\s*if\s*:/m, `${name} must run on every matrix OS`);
+    assert.doesNotMatch(block, /\bcatch\b|\bexit\s+0\b|\|\|/, `${name} must not mask failure`);
+  }
+  assert.ok(workflow.indexOf('actions/setup-node@v4') < workflow.indexOf(install));
+  assert.ok(workflow.indexOf(install) < workflow.indexOf(version));
+  assert.ok(workflow.indexOf(version) < workflow.indexOf(candidate));
+});
+
+test('catalog drift stays Ubuntu-only but uses Node 22', async () => {
+  const workflow = await readText('.github/workflows/catalog-drift-check.yml');
+  assert.match(workflow, /runs-on:\s*ubuntu-latest/);
+  assert.match(workflow, /node-version:\s*'22'/);
+  assert.doesNotMatch(workflow, /windows-latest|macos-latest|matrix\.os/);
+});
+
+test('README files use the current two-command Codex marketplace flow', async () => {
+  for (const path of ['README.md', 'README.ko.md']) {
+    const text = await readText(path);
+    assert.match(text, /codex plugin marketplace add Sungmin-Cho\/claude-deep-suite/);
+    assert.match(text, /codex plugin add deep-dashboard@claude-deep-suite/);
+    assert.doesNotMatch(text, /codex plugin install deep-dashboard/);
+  }
 });
 
 test('check-version-sync fails loud when the Codex manifest drifts', async () => {

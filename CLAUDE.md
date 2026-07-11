@@ -57,7 +57,7 @@ git push
 deep-dashboard/
 ├── .claude-plugin/plugin.json
 ├── .codex-plugin/plugin.json     # plugin manifest; declares /deep-harnessability + /deep-harness-dashboard skills
-├── package.json                    # @deep-suite/deep-dashboard (Node 20+, ESM)
+├── package.json                    # @deep-suite/deep-dashboard (Node 22+, ESM)
 ├── lib/
 │   ├── harnessability/
 │   │   ├── scorer.js               # pure-computational 6-dimension scorer (17 detectors)
@@ -119,7 +119,7 @@ payload (REQUIRED, per lib/suite-constants.js PAYLOAD_REQUIRED_FIELDS):
 
 **Scoring formula**: each dimension `score = round((passedChecks / applicableChecks) * 10) / 10`. `not_applicable` checks are excluded from BOTH numerator and denominator, and their weight is redistributed proportionally to other dimensions. `total = sum(dimensionScore × dimensionWeight)`.
 
-**Freshness contract**: report is fresh if modified < 24 hours ago. Older or missing → recompute. Shared with deep-work Phase 1 Research.
+**Freshness contract**: report is fresh for 24 hours after `envelope.generated_at`. Older, future-dated, malformed, or missing → recompute. Shared with deep-work Phase 1 Research.
 
 ### Suite telemetry — `.deep-dashboard/suite-metrics.jsonl`
 
@@ -213,10 +213,11 @@ The harnessability scorer walks **upward from its own module path** (`lib/harnes
 ## Tests
 
 ```bash
-npm test                    # node --test on lib/**/*.test.js
+npm test                    # node --test "lib/**/*.test.js" "tests/**/*.test.js"
 npm run validate:envelope   # producer_version + identity + shape
 npm run check:catalog-drift # lib/test-catalog-manifest.json vs suite docs/test-catalog.md
 npm run check:version-sync  # plugin.json.version === package.json.version
+node scripts/validate-codex-release-candidate.js --candidate-root "$PWD"
 ```
 
 **Test catalog manifest** (`lib/test-catalog-manifest.json`) mirrors `claude-deep-suite/docs/test-catalog.md` §1–§10 (10 cross-plugin e2e scenarios). The drift checker prevents this manifest from desynchronizing.
@@ -228,7 +229,7 @@ npm run check:version-sync  # plugin.json.version === package.json.version
 
 Fixtures at `test/fixtures/handoff-roundtrip/` are a byte-identical mirror of suite §9 source of truth. Re-copy on suite update before release.
 
-**CI** (`.github/workflows/catalog-drift-check.yml`) runs on PR (path-filtered) + push to main + daily 06:30 UTC. Suite source resolved via `--suite-path=`, `SUITE_REPO_LOCAL` env, or `gh api` fallback.
+**CI** uses Node.js 22. `.github/workflows/tests.yml` runs the full suite and isolated pinned-Codex candidate smoke on Windows, macOS, and Linux; `.github/workflows/catalog-drift-check.yml` remains an Ubuntu-only authenticated drift job on PR (path-filtered) + push to main + daily 06:30 UTC. Suite source resolves via `--suite-path=`, `SUITE_REPO_LOCAL` env, or `gh api` fallback.
 
 ---
 

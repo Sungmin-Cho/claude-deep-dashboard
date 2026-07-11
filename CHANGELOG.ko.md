@@ -7,6 +7,18 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 를 따르며,
 [유의적 버전](https://semver.org/spec/v2.0.0.html) 을 준수합니다.
 
+## [1.5.0] — 2026-07-10 (네이티브 Codex 및 Windows 지원)
+
+### 추가
+
+- 격리된 Codex marketplace 설치를 포함하는 동일한 Node.js 22 릴리스 계약으로 macOS 및 Linux와 함께 Windows 11을 네이티브 지원한다.
+- Codex 사용자가 Deep Suite marketplace를 통해 두 dashboard skill을 모두 설치하고 탐색할 수 있다.
+
+### 변경
+
+- skill 실행이 host가 로드한 skill 파일에서 절대 script 경로를 도출해 Claude Code와 Codex 라우팅을 shell-neutral하게 유지한다.
+- symlink 의존 보안 검사는 host 권한이 없을 때만 skip하고, 가능한 host에서는 전체 assertion을 유지한다.
+
 ## [1.4.0] — 2026-07-07 (정직한 wiki 메트릭 + session effectiveness 부활)
 
 ### 추가
