@@ -22,42 +22,69 @@ Primary entry is the slash command registered by this skill:
 | Command | Mode | Notes |
 |---|---|---|
 | `/deep-harness-dashboard` | Legacy | CLI table output (default). |
-| `/deep-harness-dashboard --json` | Legacy | Raw JSON instead of the formatted table. |
+| `/deep-harness-dashboard --json` | Legacy | `{ data, effectiveness, actions }` JSON instead of the formatted table. |
 | `/deep-harness-dashboard --suite` | Suite (M4) | Accumulates JSONL + renders markdown trend report. |
 
-There is no standalone `node lib/.../*.js` CLI for the dashboard surface
-(unlike `deep-harnessability`, which exposes `node lib/harnessability/scorer.js`).
-Dashboard composition is driven entirely from this skill — the step lists
-below describe the function calls the skill performs in-process, using ESM
-imports from `lib/dashboard/` (legacy) and `lib/` (suite).
+The standalone dashboard route is:
+
+```text
+node <plugin-root>/scripts/dashboard-cli.js [--suite] [--json] --project-root <target-project-root>
+```
+
+### Loaded-SKILL routing handoff
+
+The host passes the absolute path of this exact loaded file as
+`loadedSkillPath` to its execution tool. Derive
+`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, then construct the
+absolute `scripts/dashboard-cli.js` path from that root. The caller's current
+directory is neither the plugin root nor an implicit target root: pass the
+target explicitly as `--project-root`.
+
+- **Claude Code:** its plugin launcher obtains the absolute loaded path as
+  `realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harness-dashboard/SKILL.md)` and
+  passes that exact path as `loadedSkillPath`. `CLAUDE_PLUGIN_ROOT` is only the
+  Claude bootstrap used to form the absolute loaded path; routing then uses the
+  path-derived root.
+- **Codex:** the marketplace skill loader passes the absolute filesystem path
+  of the selected `skills/deep-harness-dashboard/SKILL.md` as `loadedSkillPath`
+  in the execution request. Codex does not invent a `CLAUDE_*` or other
+  environment variable. If the path is unavailable, fail with a routing error
+  rather than inferring a plugin root from the target cwd.
+
+Prefer passing the absolute Node argv directly through the host execution tool.
+These shell commands are fallback documentation only. For the PowerShell form,
+substitute `C:\absolute\plugin` first with the real absolute path derived three
+levels above `loadedSkillPath`; do not execute an argument containing `..`.
+
+```text
+POSIX dashboard:      node "$CLAUDE_PLUGIN_ROOT/scripts/dashboard-cli.js" --project-root "$PWD"
+PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --project-root (Get-Location).Path
+```
 
 ## Legacy mode steps
 
-1. Collect data from available plugins by importing
-   `collectData(projectRoot)` from `lib/dashboard/collector.js`. The collector
-   is **M3 envelope-aware** (cf. claude-deep-suite/docs/envelope-migration.md):
-   for each artifact path, it detects the envelope wrapper, applies identity
-   guards (producer / artifact_kind / schema.name), and exposes the inner
-   `payload` to downstream consumers. Legacy (un-wrapped) artifacts pass
-   through unchanged. Identity-mismatched envelopes resolve to `null` (with a
-   stderr warning) — defense-in-depth.
-2. Run the harnessability scorer if the report is **missing or older than the
-   24-hour freshness threshold** shared with the `deep-harnessability` skill
-   and `deep-work` Phase 1 Research. The scorer writes the envelope-wrapped
-   report to `.deep-dashboard/harnessability-report.json`; this skill never
-   recomputes the score in-process.
+1. The CLI validates the existing harnessability report before collecting data.
+   It only reuses an M3 envelope with the exact harnessability identity and a
+   parseable `envelope.generated_at` in the range `0 <= age < 24h`; missing,
+   malformed, identity-mismatched, future-dated, and 24-hour-old reports are
+   stale. For stale reports it runs the scorer and writes
+   `.deep-dashboard/harnessability-report.json` **before**
+   `collectData(projectRoot)` reads it.
+2. `collectData(projectRoot)` remains **M3 envelope-aware**
+   (cf. claude-deep-suite/docs/envelope-migration.md): it applies identity
+   guards and exposes a valid inner `payload` to downstream consumers.
+   Legacy unwrapped artifacts pass through unchanged, while identity-mismatched
+   envelopes resolve to `null` as defense-in-depth.
 3. Calculate the effectiveness score by importing
    `calculateEffectiveness(data)` from `lib/dashboard/effectiveness.js`
    against the (possibly unwrapped) data structures, then route findings
    through `getSuggestedActions(data)` from `lib/dashboard/action-router.js`.
-4. Format and display the CLI dashboard via `formatCLI(data)` from
-   `lib/dashboard/formatter.js`. For `--json`, emit the raw `data` object
-   returned by `collectData` (annotated with `effectiveness` and
-   `suggested_actions`) as `JSON.stringify(data, null, 2)` instead.
-5. Ask: "리포트 파일을 생성할까요? (y/n)"
-   - If yes: generate `harness-report-YYYY-MM-DD.md` in project root using
-     `formatMarkdown(data)` from `lib/dashboard/formatter.js`.
-   - Ask: "git commit 할까요? (y/n)"
+4. For default output, build the formatter's presentation view explicitly:
+   harnessability is `{ total, grade }` from `data.harnessability.data`,
+   effectiveness is the numeric `.effectiveness` return field, and actions are
+   the action-router results. This prevents `undefined/10` and
+   `[object Object]` output. With `--json`, emit exactly
+   `{ data, effectiveness, actions }`.
 
 ## Suite mode steps (`--suite`)
 
@@ -71,22 +98,22 @@ imports from `lib/dashboard/` (legacy) and `lib/` (suite).
    replacement `suite.wiki.ingest_actions_total`) + 3 M5-activated +
    1 M5.5-activated (all currently in the core tier;
    `lib/metrics-catalog.yaml` is the canonical list).
-3. Run `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
+3. Run `readRecentSnapshots(projectRoot, 1)` **before** appending, so its
+   first result is the previous trend baseline (or `null`).
+4. Run `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
    `.deep-dashboard/suite-metrics.jsonl` (append-only time series).
-4. Run `readRecentSnapshots(projectRoot, 2)` to fetch the trend baseline.
-5. Run `formatSuiteReportMarkdown(snapshot, previous)` from
-   `lib/suite-formatter.js` — emits markdown with trend arrows
-   (↑/↓/→/·/?, see file for full vocabulary).
-6. Ask: "`.deep-dashboard/suite-report.md` 에 저장할까요? (y/n)"
-   - If yes: `writeSuiteReportFile(snapshot, previous, projectRoot)`.
-7. **Optional OTLP export**: when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, also
+5. Run `writeSuiteReportFile(snapshot, previous, projectRoot)` to render
+   `.deep-dashboard/suite-report.md` with trend arrows (↑/↓/→/·/?).
+6. **Optional OTLP export**: when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, also
    run `exportSnapshot(snapshot)` from `lib/otel.js`. Failures are non-fatal
-   (logged, reported in stdout, do not block report rendering).
+   and do not block report rendering.
 
 ## Options
 
-- `--json` — output raw JSON instead of formatted CLI table (legacy mode)
+- `--json` — output `{ data, effectiveness, actions }` instead of the
+  formatted CLI table (legacy mode)
 - `--suite` — switch to M4 suite telemetry mode (above)
+- `--project-root PATH` — required explicit target project for every mode
 
 ## Freshness contract (shared with `deep-harnessability`)
 
@@ -94,7 +121,7 @@ The harnessability report at `.deep-dashboard/harnessability-report.json` is
 treated as fresh for **24 hours after `envelope.generated_at`**. This single
 threshold governs:
 
-- step 2 of legacy mode above (re-run the scorer when missing or stale)
+- step 1 of legacy mode above (re-run the scorer when missing or stale)
 - `deep-work` Phase 1 Research's reuse rule (read-only when fresh)
 - the sibling `deep-harnessability` skill's "Consumed by" section
 

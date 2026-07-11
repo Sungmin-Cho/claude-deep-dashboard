@@ -10,7 +10,42 @@ Assess how "harness-able" this codebase is. All measurements are computational �
 ## Invocation
 
 - Slash command: `/deep-harnessability` (registered via this skill's frontmatter).
-- Direct script: `node "${CLAUDE_PLUGIN_ROOT}/lib/harnessability/scorer.js" "${CLAUDE_PROJECT_DIR}"` — identical output.
+- Direct script: `node <plugin-root>/lib/harnessability/scorer.js --project-root <target-project-root>`.
+
+### Loaded-SKILL routing handoff
+
+The host passes the absolute path of this exact loaded file as
+`loadedSkillPath` to its execution tool. Derive
+`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, then construct the
+absolute `lib/harnessability/scorer.js` path from that root. The caller's
+current directory is neither the plugin root nor an implicit target root: pass
+the target explicitly as `--project-root`.
+
+- **Claude Code:** its plugin launcher obtains the absolute loaded path as
+  `realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harnessability/SKILL.md)` and passes
+  that exact path as `loadedSkillPath`. `CLAUDE_PLUGIN_ROOT` is only the Claude
+  bootstrap used to form the absolute loaded path; routing then uses the
+  path-derived root.
+- **Codex:** the marketplace skill loader passes the absolute filesystem path
+  of the selected `skills/deep-harnessability/SKILL.md` as `loadedSkillPath` in
+  the execution request. Codex does not invent a `CLAUDE_*` or other
+  environment variable. If the path is unavailable, fail with a routing error
+  rather than inferring a plugin root from the target cwd.
+
+Prefer passing the absolute Node argv directly through the host execution tool.
+These shell commands are fallback documentation only. For the PowerShell form,
+substitute `C:\absolute\plugin` first with the real absolute path derived three
+levels above `loadedSkillPath`; do not execute an argument containing `..`.
+
+```text
+POSIX scorer:         node "$CLAUDE_PLUGIN_ROOT/lib/harnessability/scorer.js" --project-root "$PWD"
+PowerShell scorer:    node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
+```
+
+One positional root remains a compatibility form (`node scorer.js PATH`), but
+it is still explicit. The scorer rejects a missing root, duplicate flags, extra
+positionals, and a positional root combined with `--project-root` as usage
+errors; it never defaults to `process.cwd()`.
 
 Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is installed and the report is missing or older than 24 hours (see "Consumed by" below for the shared freshness contract).
 
@@ -18,7 +53,7 @@ Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is
 
 1. Run the scorer:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/lib/harnessability/scorer.js" "${CLAUDE_PROJECT_DIR}"
+   node "<absolute-plugin-root>/lib/harnessability/scorer.js" --project-root "<absolute-target-project-root>"
    ```
    This outputs JSON (the M3 envelope) on stdout and writes the same envelope
    to `.deep-dashboard/harnessability-report.json`. The domain data (score,
@@ -65,7 +100,7 @@ Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is
    `payload.topology` and `payload.topology_hints` are **caller-injected**
    via `scoreHarnessability(projectRoot, { topology, topologyHints })`
    (see `lib/harnessability/scorer.js`). The CLI entry (`node scorer.js
-   <projectRoot>`) does not inject either, so both fields default to `null`
+   --project-root <projectRoot>`) does not inject either, so both fields default to `null`
    in standalone runs — render this step as a no-op when both are null.
    When a parent flow (e.g. deep-work Phase 1) does inject `topology_hints`
    (a `string[]`), render each line as a suggestion.
@@ -96,9 +131,10 @@ unambiguous.
 - **deep-work** Phase 1 Research — re-runs this skill when the file is missing
   or older than the 24h freshness threshold above; otherwise unwraps the
   envelope and uses the cached payload. Envelope-aware.
-- **deep-harness-dashboard** (legacy mode, step 2) — same 24h re-run rule via
-  `collector.js`'s envelope-aware reader. Aggregator-pattern producer; the
-  dashboard never writes back here.
+- **deep-harness-dashboard** (legacy mode, step 1) — same 24h re-run rule via
+  the dashboard CLI's freshness preflight before `collector.js` reads the
+  envelope. Aggregator-pattern producer; the dashboard writes only the target
+  project's refreshed report.
 
 ## Usage
 

@@ -16,19 +16,23 @@ For version history, see [`CHANGELOG.md`](CHANGELOG.md).
 - Skills: `skills/`
 - Diagnostics code: `lib/`
 - Scripts: `scripts/validate-envelope-emit.js`, `scripts/check-catalog-drift.js`,
-  `scripts/check-version-sync.js`
+  `scripts/check-version-sync.js`,
+  `scripts/validate-codex-release-candidate.js`
 
 Dashboard output under `.deep-dashboard/` belongs to target projects unless it
 is an intentional fixture.
 
 ## Verification
 
+Use Node.js 22 on Windows, macOS, or Linux.
+
 ```bash
 node -e "JSON.parse(require('fs').readFileSync('.codex-plugin/plugin.json','utf8'))"
-npm test
+npm test # node --test "lib/**/*.test.js" "tests/**/*.test.js"
 npm run validate:envelope
 npm run check:catalog-drift
 npm run check:version-sync
+node scripts/validate-codex-release-candidate.js --candidate-root "$PWD"
 ```
 
 After a release, update both suite marketplace manifests in

@@ -1,11 +1,14 @@
 {
   "name": "@deep-suite/deep-dashboard",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Cross-plugin harness diagnostics for deep-suite",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "node --test $(find lib -name '*.test.js')",
+    "test": "node --test \"lib/**/*.test.js\" \"tests/**/*.test.js\"",
     "validate:envelope": "node scripts/validate-envelope-emit.js",
     "check:catalog-drift": "node scripts/check-catalog-drift.js",
     "check:version-sync": "node scripts/check-version-sync.js"

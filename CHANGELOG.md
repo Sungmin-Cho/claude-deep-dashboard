@@ -7,6 +7,18 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-07-10 (native Codex and Windows support)
+
+### Added
+
+- Native Windows 11 support joins macOS and Linux under the same Node.js 22 release contract, including isolated Codex marketplace installation.
+- Codex users can install and discover both dashboard skills through the Deep Suite marketplace.
+
+### Changed
+
+- Skill execution now derives absolute script paths from the host-loaded skill file, keeping Claude Code and Codex routing shell-neutral.
+- Symlink-dependent security checks skip only when host privilege is unavailable while retaining their assertions on capable hosts.
+
 ## [1.4.0] — 2026-07-07 (honest wiki metrics + session effectiveness revival)
 
 ### Added

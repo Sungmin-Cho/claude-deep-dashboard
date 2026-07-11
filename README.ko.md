@@ -30,15 +30,46 @@ deep-dashboard 는 **harness 진단 계층** 으로, [Harness Engineering](https
 /plugin install deep-dashboard@claude-deep-suite
 
 # Codex
-codex plugin install deep-dashboard
+codex plugin marketplace add Sungmin-Cho/claude-deep-suite
+codex plugin add deep-dashboard@claude-deep-suite
 ```
 
-또는 GitHub URL 을 가리키는 `--source url` 로 이 repo 에서 직접 설치할 수 있다.
+deep-dashboard 는 Node.js 22 기반으로 Windows 11, macOS, Linux 를 네이티브
+지원한다. 지원되는 모든 host 에서 같은 두 skill 과 Node entry point 를 쓴다.
 
-설치 후 두 skill 이 모든 세션에서 사용 가능해진다:
+### 런타임 및 직접 CLI 라우팅
 
-- `/deep-harnessability`
-- `/deep-harness-dashboard`
+Claude Code 와 Codex 는 선택된 `SKILL.md` 의 절대 경로를
+`loadedSkillPath` 로 execution tool 에 전달한다. skill 은 이 경로에서 세
+디렉터리 위로 올라가 plugin root 를 구한 뒤, 절대 script 경로와 명시적인
+target project root 로 scorer 또는 dashboard 를 실행한다.
+`CLAUDE_PLUGIN_ROOT` 는 loaded skill 을 찾기 위한 Claude Code 전용
+bootstrap 일 뿐 Codex 변수가 아니며, target project fallback 으로 사용되지
+않는다.
+
+host 는 보통 shell-neutral Node argument vector 를 전달한다. 다음은 plugin
+root 를 절대 경로로 resolve 한 뒤 사용하는 동등한 fallback 형식이다:
+
+```text
+# POSIX
+node "/absolute/plugin/lib/harnessability/scorer.js" --project-root "$PWD"
+node "/absolute/plugin/scripts/dashboard-cli.js" --project-root "$PWD"
+
+# PowerShell
+node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
+node "C:\absolute\plugin\scripts\dashboard-cli.js" --project-root (Get-Location).Path
+```
+
+PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `..`
+세그먼트를 전달하거나 caller 의 현재 디렉터리에서 plugin 위치를 추론하지
+않는다.
+
+설치 후 두 host 모두에서 두 skill 을 사용할 수 있다:
+
+| Skill | Claude Code | Codex |
+|---|---|---|
+| Harnessability | `/deep-harnessability` | `$deep-dashboard:deep-harnessability` |
+| Dashboard | `/deep-harness-dashboard` | `$deep-dashboard:deep-harness-dashboard` |
 
 ## Skills
 
