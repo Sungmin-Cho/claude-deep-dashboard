@@ -28,16 +28,18 @@ test('package scripts contain no POSIX-only test enumeration', async () => {
   assert.doesNotMatch(pkg.scripts.test, /\$\(|\bfind\b|\bbash\b|\bsh\b/);
 });
 
-test('release metadata is exactly synchronized at 1.5.0', async () => {
-  const [pkg, claudeManifest, codexManifest] = await Promise.all([
+test('release metadata and the positive envelope fixture are synchronized at 1.5.0', async () => {
+  const [pkg, claudeManifest, codexManifest, envelopeFixture] = await Promise.all([
     readJson('package.json'),
     readJson('.claude-plugin/plugin.json'),
-    readJson('.codex-plugin/plugin.json')
+    readJson('.codex-plugin/plugin.json'),
+    readJson('tests/fixtures/sample-harnessability-report.json')
   ]);
 
   for (const manifest of [pkg, claudeManifest, codexManifest]) {
     assert.equal(manifest.version, '1.5.0');
   }
+  assert.equal(envelopeFixture.envelope.producer_version, '1.5.0');
 });
 
 test('check-version-sync fails loud when the Codex manifest drifts', async () => {
