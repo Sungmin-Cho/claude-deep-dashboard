@@ -60,25 +60,33 @@ test('candidate fixture pins the release identity and both discoverable skills',
   assert.equal(fixture.skillEntries.every(({ path }) => path.endsWith('SKILL.md')), true);
 });
 
-test('Codex child invocation is native on POSIX and quotes the Windows cmd shim', () => {
+test('Codex child invocation preserves flags through the Windows cmd shim', () => {
   const args = ['plugin', 'marketplace', 'add', 'C:\\candidate root\\marketplace'];
   assert.deepEqual(buildCodexInvocation(args, { platform: 'linux' }), {
     command: 'codex',
     args
   });
+
+  const windows = {
+    platform: 'win32',
+    environment: { COMSPEC: 'C:\\Windows\\System32\\cmd.exe' }
+  };
+  assert.deepEqual(buildCodexInvocation(['--version'], windows), {
+    command: 'C:\\Windows\\System32\\cmd.exe',
+    args: ['/d', '/s', '/c', 'call codex --version'],
+    windowsVerbatimArguments: true
+  });
   assert.deepEqual(
-    buildCodexInvocation(args, {
-      platform: 'win32',
-      environment: { COMSPEC: 'C:\\Windows\\System32\\cmd.exe' }
-    }),
+    buildCodexInvocation(args, windows),
     {
       command: 'C:\\Windows\\System32\\cmd.exe',
       args: [
         '/d',
         '/s',
         '/c',
-        'call codex "plugin" "marketplace" "add" "C:\\candidate root\\marketplace"'
-      ]
+        'call codex plugin marketplace add "C:\\candidate root\\marketplace"'
+      ],
+      windowsVerbatimArguments: true
     }
   );
 });

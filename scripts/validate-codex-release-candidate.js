@@ -201,6 +201,7 @@ function runCommand(command, args, options) {
     env: options.env,
     encoding: 'utf8',
     windowsHide: true,
+    windowsVerbatimArguments: options.windowsVerbatimArguments === true,
     maxBuffer: 10 * 1024 * 1024
   });
   if (result.error || result.status !== 0) {
@@ -210,6 +211,9 @@ function runCommand(command, args, options) {
 }
 
 function quoteForCmd(value) {
+  // `call` reparses a .cmd shim. Preserve plain flags such as `--version`
+  // verbatim; quote only values that actually need cmd escaping.
+  if (value !== '' && !/[\s"&|<>^%]/.test(value)) return value;
   const escaped = value
     .replaceAll('^', '^^')
     .replaceAll('%', '%%')
@@ -228,13 +232,19 @@ export function buildCodexInvocation(
   const commandLine = `call codex ${args.map(quoteForCmd).join(' ')}`;
   return {
     command: environment.COMSPEC ?? 'cmd.exe',
-    args: ['/d', '/s', '/c', commandLine]
+    args: ['/d', '/s', '/c', commandLine],
+    // The final argument is already a complete cmd command line. Prevent
+    // Node/libuv from applying an additional incompatible quoting pass.
+    windowsVerbatimArguments: true
   };
 }
 
 function runCodex(args, options) {
   const invocation = buildCodexInvocation(args, { environment: options.env });
-  return runCommand(invocation.command, invocation.args, options);
+  return runCommand(invocation.command, invocation.args, {
+    ...options,
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments
+  });
 }
 
 function parsePluginList(jsonText) {
