@@ -137,7 +137,7 @@ Each dimension scores 0–10 from the fraction of its checks that pass. Ecosyste
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed by deep-work Phase 1 Research (when present and < 24 hours old) and by `/deep-harness-dashboard`.
+The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed read-only by deep-work Phase 1 Research, which applies its own 7-day staleness window and never re-runs the scorer, and by `/deep-harness-dashboard`, whose legacy mode does re-run the scorer when the report is missing or ≥ 24 hours old.
 
 ## Unified dashboard
 

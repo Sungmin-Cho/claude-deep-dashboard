@@ -138,7 +138,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-리포트는 [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research(존재하고 24시간 미만일 때)와 `/deep-harness-dashboard` 가 소비한다.
+리포트는 [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research 와 `/deep-harness-dashboard` 가 소비한다. deep-work 는 자체 7일 staleness 기준을 적용하는 read-only 소비자로 scorer 를 재실행하지 않으며, `/deep-harness-dashboard` 의 legacy 모드는 리포트가 없거나 24시간 이상 경과했을 때 scorer 를 재실행한다.
 
 ## 통합 대시보드
 
