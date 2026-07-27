@@ -1,60 +1,40 @@
 ---
 name: deep-harness-dashboard
-description: This skill should be used when the user asks for a cross-plugin harness summary, effectiveness score, action routing, or suite-level telemetry across deep-work / deep-review / deep-docs / deep-evolve / deep-wiki. Trigger phrases include "harness 대시보드 보여줘", "전체 sensor 통합 리포트", "suite metrics 누적", "trend report 만들어줘", "OTLP 로 내보내", "show the harness dashboard", "cross-plugin telemetry", "deep-suite snapshot". Two modes — legacy (default) aggregates 5 envelope/legacy sources for an effectiveness snapshot; suite mode (`--suite`, since v1.3.0) accumulates 17 metrics from 11 sources into `.deep-dashboard/suite-metrics.jsonl`, renders `.deep-dashboard/suite-report.md`, and optionally exports to OTLP/HTTP-JSON when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+description: Aggregates deep-suite harness sensors into an effectiveness snapshot or a 17-metric `--suite` series. Triggers on "harness 대시보드 보여줘", "전체 sensor 통합 리포트", "suite metrics 누적", "trend report 만들어줘", "OTLP 로 내보내", "show the harness dashboard", "cross-plugin telemetry", "deep-suite snapshot". Writes `.deep-dashboard/suite-metrics.jsonl` + `suite-report.md`.
 ---
 
 # Harness Dashboard
 
-Aggregates cross-plugin sensor data into a unified view. Two modes:
+Two modes over one CLI:
 
-- **Legacy mode** (default) — envelope-aware single-snapshot dashboard with
-  effectiveness scoring and action routing. Reads 5 sources (deep-work,
-  deep-review legacy, deep-docs, deep-evolve, harnessability self).
-- **Suite mode** (`--suite`, M4) — accumulates time-series metrics for all 17
-  suite-level signals defined in `lib/metrics-catalog.yaml`. Appends to
-  `.deep-dashboard/suite-metrics.jsonl`, renders trend report
-  (`.deep-dashboard/suite-report.md`), and optionally exports to OTLP/HTTP-JSON.
+- **Legacy** (default) — envelope-aware single snapshot: 5 sources, effectiveness score, action
+  routing.
+- **Suite** (`--suite`, M4) — accumulates the 17 metrics from 15 sources into an append-only JSONL
+  time series plus a trend report. `lib/metrics-catalog.yaml` owns the metric ids, tiers,
+  `null_when` semantics, and the deprecated wire keys.
 
 ## Invocation
 
-Primary entry is the slash command registered by this skill:
-
-| Command | Mode | Notes |
+| Command | Mode | Output |
 |---|---|---|
-| `/deep-harness-dashboard` | Legacy | CLI table output (default). |
-| `/deep-harness-dashboard --json` | Legacy | `{ data, effectiveness, actions }` JSON instead of the formatted table. |
-| `/deep-harness-dashboard --suite` | Suite (M4) | Accumulates JSONL + renders markdown trend report. |
+| `/deep-harness-dashboard` | Legacy | formatted CLI table |
+| `/deep-harness-dashboard --json` | Legacy | exactly `{ data, effectiveness, actions }` |
+| `/deep-harness-dashboard --suite` | Suite (M4) | JSONL append + markdown trend report |
 
-The standalone dashboard route is:
-
-```text
-node <plugin-root>/scripts/dashboard-cli.js [--suite] [--json] --project-root <target-project-root>
-```
+Standalone route:
+`node <plugin-root>/scripts/dashboard-cli.js [--suite] [--json] --project-root <target-project-root>`
 
 ### Loaded-SKILL routing handoff
 
-The host passes the absolute path of this exact loaded file as
-`loadedSkillPath` to its execution tool. Derive
-`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, then construct the
-absolute `scripts/dashboard-cli.js` path from that root. The caller's current
-directory is neither the plugin root nor an implicit target root: pass the
-target explicitly as `--project-root`.
-
-- **Claude Code:** its plugin launcher obtains the absolute loaded path as
-  `realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harness-dashboard/SKILL.md)` and
-  passes that exact path as `loadedSkillPath`. `CLAUDE_PLUGIN_ROOT` is only the
-  Claude bootstrap used to form the absolute loaded path; routing then uses the
-  path-derived root.
-- **Codex:** the marketplace skill loader passes the absolute filesystem path
-  of the selected `skills/deep-harness-dashboard/SKILL.md` as `loadedSkillPath`
-  in the execution request. Codex does not invent a `CLAUDE_*` or other
-  environment variable. If the path is unavailable, fail with a routing error
-  rather than inferring a plugin root from the target cwd.
-
-Prefer passing the absolute Node argv directly through the host execution tool.
-These shell commands are fallback documentation only. For the PowerShell form,
-substitute `C:\absolute\plugin` first with the real absolute path derived three
-levels above `loadedSkillPath`; do not execute an argument containing `..`.
+`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, where `loadedSkillPath` is this file's
+absolute path as the host passes it — Claude Code derives it from
+`realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harness-dashboard/SKILL.md)`; Codex passes the loaded
+`SKILL.md` path itself and defines no `CLAUDE_*` variable. Build the
+`scripts/dashboard-cli.js` path from `pluginRoot`; if `loadedSkillPath` is unavailable, fail with a
+routing error rather than inferring a root. The caller's cwd is neither the plugin root nor an
+implicit target root, so always pass the target as `--project-root`. Prefer absolute Node argv
+through the host execution tool — the commands below are fallback documentation; substitute the
+real absolute root and never execute an argument containing `..`.
 
 ```text
 POSIX dashboard:      node "$CLAUDE_PLUGIN_ROOT/scripts/dashboard-cli.js" --project-root "$PWD"
@@ -63,105 +43,105 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
 
 ## Legacy mode steps
 
-1. The CLI validates the existing harnessability report before collecting data.
-   It only reuses an M3 envelope with the exact harnessability identity and a
-   parseable `envelope.generated_at` in the range `0 <= age < 24h`; missing,
-   malformed, identity-mismatched, future-dated, and 24-hour-old reports are
-   stale. For stale reports it runs the scorer and writes
-   `.deep-dashboard/harnessability-report.json` **before**
+1. **Freshness preflight.** Reuse the existing harnessability report only when it is an M3 envelope
+   with the exact harnessability identity and a parseable `envelope.generated_at` in
+   `0 <= age < 24h`. Missing, malformed, identity-mismatched, future-dated, and ≥ 24 h reports are
+   stale: run the scorer and write `.deep-dashboard/harnessability-report.json` **before**
    `collectData(projectRoot)` reads it.
-2. `collectData(projectRoot)` remains **M3 envelope-aware**
-   (cf. claude-deep-suite/docs/envelope-migration.md): it applies identity
-   guards and exposes a valid inner `payload` to downstream consumers.
-   Legacy unwrapped artifacts pass through unchanged, while identity-mismatched
-   envelopes resolve to `null` as defense-in-depth.
-3. Calculate the effectiveness score by importing
-   `calculateEffectiveness(data)` from `lib/dashboard/effectiveness.js`
-   against the (possibly unwrapped) data structures, then route findings
-   through `getSuggestedActions(data)` from `lib/dashboard/action-router.js`.
-4. For default output, build the formatter's presentation view explicitly:
-   harnessability is `{ total, grade }` from `data.harnessability.data`,
-   effectiveness is the numeric `.effectiveness` return field, and actions are
-   the action-router results. This prevents `undefined/10` and
-   `[object Object]` output. With `--json`, emit exactly
-   `{ data, effectiveness, actions }`.
+2. `collectData(projectRoot)` is **M3 envelope-aware** — it applies the identity guards
+   (`<plugin-root>/AGENTS.md` §Reading other plugins' envelopes), passes legacy artifacts through
+   unchanged, and resolves identity-mismatched envelopes to `null` as defense-in-depth.
+3. Score with `calculateEffectiveness(data)` from `lib/dashboard/effectiveness.js`, then route
+   findings through `getSuggestedActions(data)` from `lib/dashboard/action-router.js`.
+4. Build the default view explicitly — harnessability as `{ total, grade }` from
+   `data.harnessability.data`, effectiveness as the numeric `.effectiveness` return field, actions
+   from the router. That explicit shaping is what prevents `undefined/10` and `[object Object]`.
+   With `--json`, emit exactly `{ data, effectiveness, actions }`.
 
 ## Suite mode steps (`--suite`)
 
-1. Run `collectSuite(projectRoot)` from `lib/suite-collector.js` — covers 11
-   sources: 8 envelope artifacts (M3-compliant) + 3 NDJSON event logs (2 hook
-   logs + deep-wiki vault log). Honors `options.wikiRoot` or `DEEP_WIKI_ROOT`
-   for external wiki vaults.
-2. Run `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17
-   M4 metrics: 13 M4-core (computed; includes the deprecated
-   `suite.wiki.auto_ingest_candidates_total` wire key pinned `null` and its
-   replacement `suite.wiki.ingest_actions_total`) + 3 M5-activated +
-   1 M5.5-activated (all currently in the core tier;
-   `lib/metrics-catalog.yaml` is the canonical list).
-3. Run `readRecentSnapshots(projectRoot, 1)` **before** appending, so its
-   first result is the previous trend baseline (or `null`).
-4. Run `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
-   `.deep-dashboard/suite-metrics.jsonl` (append-only time series).
-5. Run `writeSuiteReportFile(snapshot, previous, projectRoot)` to render
+One ordering constraint: read the previous snapshot **before** appending the new one, or the trend
+baseline becomes the row just written. The sequence below mirrors `runSuite` in
+`scripts/dashboard-cli.js`.
+
+1. `collectSuite(projectRoot)` from `lib/suite-collector.js` — the 15 sources below. Honors
+   `options.wikiRoot` or `DEEP_WIKI_ROOT` for external wiki vaults.
+2. `readRecentSnapshots(projectRoot, 1)` — its first result is the previous trend baseline (or
+   `null`). This is the step that must precede step 4.
+3. `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17 metrics per
+   `lib/metrics-catalog.yaml`.
+4. `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
+   `.deep-dashboard/suite-metrics.jsonl`.
+5. `writeSuiteReportFile(snapshot, previous, projectRoot)` — renders
    `.deep-dashboard/suite-report.md` with trend arrows (↑/↓/→/·/?).
-6. **Optional OTLP export**: when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, also
-   run `exportSnapshot(snapshot)` from `lib/otel.js`. Failures are non-fatal
-   and do not block report rendering.
+6. `exportSnapshot(snapshot)` from `lib/otel.js` — always called; without
+   `OTEL_EXPORTER_OTLP_ENDPOINT` it returns `{ exported: false, reason: 'no-endpoint' }` and does
+   nothing. Export failures are non-fatal and never block rendering.
 
 ## Options
 
-- `--json` — output `{ data, effectiveness, actions }` instead of the
-  formatted CLI table (legacy mode)
-- `--suite` — switch to M4 suite telemetry mode (above)
-- `--project-root PATH` — required explicit target project for every mode
+- `--json` — legacy mode outputs `{ data, effectiveness, actions }` instead of the CLI table
+- `--suite` — switch to M4 suite telemetry mode
+- `--project-root PATH` — **required in every mode**
 
 ## Freshness contract (shared with `deep-harnessability`)
 
-The harnessability report at `.deep-dashboard/harnessability-report.json` is
-treated as fresh for **24 hours after `envelope.generated_at`**. This single
-threshold governs:
+`.deep-dashboard/harnessability-report.json` is fresh for **24 hours after
+`envelope.generated_at`**. The threshold is implemented once, as `DAY_MS` in
+`scripts/dashboard-cli.js`, and governs legacy-mode step 1 above; its prose sites are both
+`skills/*/SKILL.md` and `<plugin-root>/AGENTS.md` — change them together. It binds no other plugin:
+deep-work Phase 1 Research reads the report read-only under its own 7-day policy.
 
-- step 1 of legacy mode above (re-run the scorer when missing or stale)
-- `deep-work` Phase 1 Research's reuse rule (read-only when fresh)
-- the sibling `deep-harnessability` skill's "Consumed by" section
+## Envelope-aware sources (legacy mode, 5)
 
-Update the threshold in all three places together so the policy stays
-unambiguous.
+| Producer / kind (when wrapped) | Path |
+|---|---|
+| `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` |
+| `(deep-dashboard, harnessability-report)` — self | `.deep-dashboard/harnessability-report.json` |
+| `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` |
+| `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` |
+| `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` |
 
-## Envelope-aware sources (legacy mode)
+`.deep-review/fitness.json` and `.deep-review/receipts/*.json` stay legacy pass-through;
+deep-review's envelope-bound artifact (`recurring-findings.json`) is suite-mode only.
 
-| Source | Path | Envelope identity (when wrapped) |
-|---|---|---|
-| deep-docs | `.deep-docs/last-scan.json` | `(deep-docs, last-scan)` |
-| deep-dashboard (self) | `.deep-dashboard/harnessability-report.json` | `(deep-dashboard, harnessability-report)` |
-| deep-work session | `.deep-work/session-receipt.json` | `(deep-work, session-receipt)` |
-| deep-work slices | `.deep-work/receipts/*.json` | `(deep-work, slice-receipt)` |
-| deep-evolve | `.deep-evolve/evolve-receipt.json` | `(deep-evolve, evolve-receipt)` |
+These 5 envelope-aware rows are **not** the 5 keys `collectData()` returns (`deepWork`,
+`deepReview`, `deepDocs`, `harnessability`, `deepEvolve`): the two deep-work artifacts collapse
+into one key, and `deepReview` contributes no envelope row. Same count, different grouping.
 
-`.deep-review/fitness.json` and `.deep-review/receipts/*.json` remain legacy
-pass-through; deep-review's M3 envelope-bound artifact (`recurring-findings.json`)
-is consumed only by suite mode.
+## Suite mode sources (15)
 
-## Suite mode sources (M4)
+12 M3 envelopes:
 
-| Source | Producer / Kind | Path | Notes |
-|---|---|---|---|
-| Session receipts | `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` | M3 envelope |
-| Slice receipts | `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` | M3 envelope (multi) |
-| Recurring findings | `(deep-review, recurring-findings)` | `.deep-review/recurring-findings.json` | M3 envelope |
-| Last scan | `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` | M3 envelope |
-| Evolve receipt | `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` | M3 envelope |
-| Evolve insights | `(deep-evolve, evolve-insights)` | `.deep-evolve/evolve-insights.json` | M3 envelope (aggregator) |
-| Harnessability | `(deep-dashboard, harnessability-report)` | `.deep-dashboard/harnessability-report.json` | M3 envelope (aggregator) |
-| Wiki index | `(deep-wiki, index)` | `<wiki_root>/.wiki-meta/index.json` | M3 envelope (aggregator) |
-| Hook log (work) | `(deep-work, hook-log)` | `.deep-work/hooks.log.jsonl` | NDJSON (legacy) |
-| Hook log (evolve) | `(deep-evolve, hook-log)` | `.deep-evolve/hooks.log.jsonl` | NDJSON (legacy) |
-| Wiki event log | `(deep-wiki, log)` | `<wiki_root>/log.jsonl` | NDJSON (legacy) |
+| Producer / kind | Path |
+|---|---|
+| `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` |
+| `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` |
+| `(deep-work, handoff)` | `.deep-work/handoffs/*.json` + `.deep-work/<session>/handoff.json` |
+| `(deep-work, compaction-state)` | `.deep-work/compaction-states/*.json` + `.deep-work/<session>/compaction-state.json` |
+| `(deep-review, recurring-findings)` | `.deep-review/recurring-findings.json` |
+| `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` |
+| `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` |
+| `(deep-evolve, evolve-insights)` | `.deep-evolve/evolve-insights.json` |
+| `(deep-evolve, handoff)` | `.deep-evolve/handoffs/*.json` + `.deep-evolve/<session>/handoff.json` |
+| `(deep-evolve, compaction-state)` | `.deep-evolve/compaction-states/*.json` + `.deep-evolve/<session>/compaction-state.json` |
+| `(deep-dashboard, harnessability-report)` | `.deep-dashboard/harnessability-report.json` |
+| `(deep-wiki, index)` | `<wiki_root>/.wiki-meta/index.json` |
+
+The four M5 rows are `dir+session-glob`: the flat aggregation dir **and** one level of per-session
+subdirs are both read, then merged per (producer, kind). A session subdir named like the flat dir
+(`handoffs`, `compaction-states`) is skipped so nothing is counted twice.
+
+3 NDJSON logs: `(deep-work, hook-log)` `.deep-work/hooks.log.jsonl`, `(deep-evolve, hook-log)`
+`.deep-evolve/hooks.log.jsonl`, `(deep-wiki, log)` `<wiki_root>/log.jsonl`.
+
+These 15 read sources are exactly the 15 `EXPECTED_SOURCES` of `lib/suite-constants.js` that form
+the `missing_signal_ratio` denominator — the two sets must stay in step.
 
 ## Outputs (suite mode)
 
-Downstream consumers of this skill's outputs:
-
-- `.deep-dashboard/suite-metrics.jsonl` — append-only time series; one snapshot per `--suite` run. Future tooling (e.g. external dashboards, deep-evolve insight aggregators) may read this file.
-- `.deep-dashboard/suite-report.md` — human-facing markdown report; not consumed by other plugins.
-- OTLP collector (when `OTEL_EXPORTER_OTLP_ENDPOINT` is set) — out-of-process observability sink; transport details in `lib/otel.js`.
+- `.deep-dashboard/suite-metrics.jsonl` — append-only time series, one snapshot per `--suite` run;
+  external tooling (dashboards, deep-evolve insight aggregators) may read it.
+- `.deep-dashboard/suite-report.md` — human-facing only, not consumed by other plugins.
+- OTLP collector (when `OTEL_EXPORTER_OTLP_ENDPOINT` is set) — out-of-process observability sink;
+  transport details in `lib/otel.js`.

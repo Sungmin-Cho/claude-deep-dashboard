@@ -128,7 +128,7 @@ Assesses codebase readiness across 6 dimensions using 17 purely computational de
 | Linter & Formatter | 10% | linter config, formatter config (Prettier / Biome / EditorConfig) |
 | CI/CD | 10% | CI config present (`.github/workflows`, `.gitlab-ci.yml`, `.circleci`), CI runs tests |
 
-Each dimension scores 0–10 from the fraction of its checks that pass. Ecosystem-irrelevant checks are marked `not_applicable` and excluded from that dimension's denominator (e.g. TypeScript checks on a Python-only project), with their weight redistributed proportionally. The final score is the weighted average, rounded to one decimal.
+Each dimension scores 0–10 from the fraction of its checks that pass. Ecosystem-irrelevant checks are marked `not_applicable` and excluded from that dimension's denominator (e.g. TypeScript checks on a Python-only project). Dimension weights are never redistributed: a dimension whose checks are all `not_applicable` scores 0 and still costs its full weight — a deliberate ecosystem-mismatch penalty that keeps scores comparable across snapshots. The final score is the weighted average, rounded to one decimal.
 
 | Grade | Score |
 |---|---|
@@ -137,7 +137,7 @@ Each dimension scores 0–10 from the fraction of its checks that pass. Ecosyste
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed by deep-work Phase 1 Research (when present and < 24 hours old) and by `/deep-harness-dashboard`.
+The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed read-only by deep-work Phase 1 Research, which applies its own 7-day staleness window and never re-runs the scorer, and by `/deep-harness-dashboard`, whose legacy mode does re-run the scorer when the report is missing or ≥ 24 hours old.
 
 ## Unified dashboard
 
@@ -171,7 +171,7 @@ If a dimension has no data, its weight is redistributed proportionally to the av
 
 Suite mode is an opt-in superset of the single-snapshot dashboard. Where legacy mode renders a one-shot effectiveness view from 5 sources, suite mode accumulates a **time-series** of 17 cross-plugin metrics across all 6 deep-suite plugins, and is the substrate for OTel observability.
 
-It reads 11 sources (8 M3 envelope artifacts + 3 NDJSON event logs), honoring `options.wikiRoot` / `DEEP_WIKI_ROOT` for vaults outside the project root. The authoritative metric catalog is [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric carries its sources, aggregation formula, and `null_when` semantics.
+It reads 15 sources (12 M3 envelope artifacts + 3 NDJSON event logs), honoring `options.wikiRoot` / `DEEP_WIKI_ROOT` for vaults outside the project root. The authoritative metric catalog is [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric carries its sources, aggregation formula, and `null_when` semantics.
 
 | Tier | Metric ID | Summary |
 |---|---|---|

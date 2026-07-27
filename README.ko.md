@@ -129,7 +129,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 | Linter & Formatter | 10% | 린터 설정, 포매터 설정(Prettier / Biome / EditorConfig) |
 | CI/CD | 10% | CI 설정 존재(`.github/workflows`, `.gitlab-ci.yml`, `.circleci`), CI 가 테스트 실행 |
 
-각 차원은 통과한 체크 비율로 0–10 점을 받는다. 생태계와 무관한 체크는 `not_applicable` 로 표시되어 해당 차원의 분모에서 제외되고(예: Python 전용 프로젝트의 TypeScript 체크) 가중치는 비례적으로 재분배된다. 최종 점수는 가중 평균이며 소수점 한 자리로 반올림된다.
+각 차원은 통과한 체크 비율로 0–10 점을 받는다. 생태계와 무관한 체크는 `not_applicable` 로 표시되어 해당 차원의 분모에서 제외된다(예: Python 전용 프로젝트의 TypeScript 체크). 차원 가중치는 재분배되지 않는다. 모든 체크가 `not_applicable` 인 차원은 0 점을 받고 그 가중치만큼 그대로 감점되며, 이는 스냅샷 간 점수 비교 가능성을 지키기 위한 의도된 생태계 불일치 페널티다. 최종 점수는 가중 평균이며 소수점 한 자리로 반올림된다.
 
 | 등급 | 점수 |
 |---|---|
@@ -138,7 +138,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-리포트는 [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research(존재하고 24시간 미만일 때)와 `/deep-harness-dashboard` 가 소비한다.
+리포트는 [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research 와 `/deep-harness-dashboard` 가 소비한다. deep-work 는 자체 7일 staleness 기준을 적용하는 read-only 소비자로 scorer 를 재실행하지 않으며, `/deep-harness-dashboard` 의 legacy 모드는 리포트가 없거나 24시간 이상 경과했을 때 scorer 를 재실행한다.
 
 ## 통합 대시보드
 
@@ -172,7 +172,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 
 Suite 모드는 단일 스냅샷 대시보드의 opt-in superset 이다. legacy 모드가 5개 소스에서 일회성 효과성 뷰를 렌더하는 반면, suite 모드는 6개 deep-suite 플러그인 전체에 걸친 17개 크로스 플러그인 메트릭의 **시계열** 을 누적하며 OTel 관측성의 기반이다.
 
-11개 소스(8개 M3 envelope artifact + 3개 NDJSON 이벤트 로그)를 읽으며, 프로젝트 root 밖의 vault 를 위해 `options.wikiRoot` / `DEEP_WIKI_ROOT` 를 존중한다. authoritative 메트릭 카탈로그는 [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml) 이며, 모든 메트릭이 소스, 집계 공식, `null_when` 시멘틱을 담고 있다.
+15개 소스(12개 M3 envelope artifact + 3개 NDJSON 이벤트 로그)를 읽으며, 프로젝트 root 밖의 vault 를 위해 `options.wikiRoot` / `DEEP_WIKI_ROOT` 를 존중한다. authoritative 메트릭 카탈로그는 [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml) 이며, 모든 메트릭이 소스, 집계 공식, `null_when` 시멘틱을 담고 있다.
 
 | Tier | Metric ID | 요약 |
 |---|---|---|

@@ -7,6 +7,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-07-27 (context diet per Claude 5 context-engineering rules)
+
+### Changed
+
+- Claude Code and Codex now read one shared project guide instead of two copies that could drift apart.
+- Both skill guides are substantially shorter, leaving more of the session context window for the user's own work.
+- Both skill descriptions are half their previous length, with every English and Korean trigger phrase preserved verbatim.
+
+### Fixed
+
+- The documented dimension score formula now matches the 0–10 score the scorer actually reports.
+- Harnessability dimension weights are documented as never redistributed, so a dimension with no applicable checks costs its full weight by design; the separate effectiveness score remains the documented exception that does redistribute.
+- Suite mode is documented as reading 15 sources, matching what it collects.
+- The 24-hour freshness rule is documented as this plugin's own behaviour; deep-work reads the report under its own, longer staleness window.
+- Envelope-reading rules are documented per reader, so the stricter suite-mode validation is no longer attributed to the legacy dashboard.
+
 ## [1.5.0] — 2026-07-10 (native Codex and Windows support)
 
 ### Added
