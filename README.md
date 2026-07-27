@@ -171,7 +171,7 @@ If a dimension has no data, its weight is redistributed proportionally to the av
 
 Suite mode is an opt-in superset of the single-snapshot dashboard. Where legacy mode renders a one-shot effectiveness view from 5 sources, suite mode accumulates a **time-series** of 17 cross-plugin metrics across all 6 deep-suite plugins, and is the substrate for OTel observability.
 
-It reads 11 sources (8 M3 envelope artifacts + 3 NDJSON event logs), honoring `options.wikiRoot` / `DEEP_WIKI_ROOT` for vaults outside the project root. The authoritative metric catalog is [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric carries its sources, aggregation formula, and `null_when` semantics.
+It reads 15 sources (12 M3 envelope artifacts + 3 NDJSON event logs), honoring `options.wikiRoot` / `DEEP_WIKI_ROOT` for vaults outside the project root. The authoritative metric catalog is [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml), where every metric carries its sources, aggregation formula, and `null_when` semantics.
 
 | Tier | Metric ID | Summary |
 |---|---|---|

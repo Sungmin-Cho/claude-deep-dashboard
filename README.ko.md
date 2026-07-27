@@ -172,7 +172,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 
 Suite 모드는 단일 스냅샷 대시보드의 opt-in superset 이다. legacy 모드가 5개 소스에서 일회성 효과성 뷰를 렌더하는 반면, suite 모드는 6개 deep-suite 플러그인 전체에 걸친 17개 크로스 플러그인 메트릭의 **시계열** 을 누적하며 OTel 관측성의 기반이다.
 
-11개 소스(8개 M3 envelope artifact + 3개 NDJSON 이벤트 로그)를 읽으며, 프로젝트 root 밖의 vault 를 위해 `options.wikiRoot` / `DEEP_WIKI_ROOT` 를 존중한다. authoritative 메트릭 카탈로그는 [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml) 이며, 모든 메트릭이 소스, 집계 공식, `null_when` 시멘틱을 담고 있다.
+15개 소스(12개 M3 envelope artifact + 3개 NDJSON 이벤트 로그)를 읽으며, 프로젝트 root 밖의 vault 를 위해 `options.wikiRoot` / `DEEP_WIKI_ROOT` 를 존중한다. authoritative 메트릭 카탈로그는 [`lib/metrics-catalog.yaml`](./lib/metrics-catalog.yaml) 이며, 모든 메트릭이 소스, 집계 공식, `null_when` 시멘틱을 담고 있다.
 
 | Tier | Metric ID | 요약 |
 |---|---|---|
