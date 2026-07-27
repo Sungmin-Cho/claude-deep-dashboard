@@ -11,19 +11,17 @@
 
 ### 변경
 
-- `CLAUDE.md` 는 한 줄 `@AGENTS.md` import 로 바뀌었고, 공유 런타임 규칙·gotcha·크로스 플러그인 계약의 단일 소스는 `AGENTS.md` 가 된다 — 두 파일 합산 17,788 → 9,396 바이트 (−47.2 %).
-- 두 skill 본문에서 중복·재서술 문장을 걷어내되 실행 계약은 전부 유지한다: 17,418 → 13,219 바이트 (−24.1 %).
-- 두 skill 의 `description` frontmatter 를 절반으로 줄였고 (655 → 326, 804 → 401 바이트), 영어·한국어 트리거 문구 16개는 모두 원문 그대로 보존한다.
-
-> 두 수치는 리뷰 중간 측정치(8,248 / 12,503 바이트)보다 크다. 독립 리뷰에서 단순히 장황한 게 아니라 **틀린** 계약 서술 네 건이 발견되었고, 이를 바로잡는 데 바이트가 들었다.
+- Claude Code 와 Codex 가 서로 어긋날 수 있는 두 벌 대신 하나의 공유 프로젝트 가이드를 읽는다.
+- 두 skill 가이드가 크게 짧아져, 세션 컨텍스트 윈도를 사용자의 작업에 더 많이 쓸 수 있다.
+- 두 skill 의 description 이 기존의 절반 길이가 되었고, 영어·한국어 트리거 문구는 모두 원문 그대로 보존된다.
 
 ### 수정
 
-- 가이드와 README 에서 `not_applicable` 가중치 재분배 서술을 제거한다: harnessability scorer 는 dimension 가중치를 재정규화하지 않으므로, 전부 not-applicable 인 dimension 은 해당 가중치를 그대로 잃는다 — 버그가 아니라 의도된 페널티다. 별개인 *effectiveness* scorer 는 실제로 재분배하며, 이제 의도된 예외로 명시된다.
-- suite collector 의 소스 개수를 11 → 15 로 바로잡는다 (M3 envelope 12개 + NDJSON 로그 3개, M5 handoff·compaction-state 소스 4개 포함). collector 는 `missing_signal_ratio` 분모인 `EXPECTED_SOURCES` 15개를 정확히 읽으며, 두 집합이 의도적으로 다르다는 서술은 M5 이전의 잔재였다.
-- 문서화된 차원 점수 공식을 `round((passed / applicable) * 10) / 10` 에서 `round((passed / applicable) * 100) / 10` 으로 바로잡고(전자는 0–1 분수를 뜻하지만 scorer 는 0–10 을 낸다), total 의 마지막 반올림 단계도 함께 표기한다.
-- envelope 판독 계약을 판독기별로 분리한다: 필수 payload 필드를 검증하는 쪽은 suite collector 뿐이며 실패를 텔레메트리로 기록하고, legacy collector 는 envelope 형태가 아닌 아티팩트를 그대로 통과시키며 stderr 로 경고한다.
-- 24시간 freshness 임계값의 실제 구현 위치를 scorer 가 아닌 `scripts/dashboard-cli.js` 의 `DAY_MS` 로 바로잡고, 경계 표기를 `age >= DAY_MS` 에 맞춰 `≥ 24 h` 로 통일한다.
+- 문서화된 차원 점수 공식이 scorer 가 실제로 보고하는 0–10 점수와 일치하게 되었다.
+- harnessability 차원 가중치는 재분배되지 않는 것으로 문서화되어, 적용 가능한 체크가 없는 차원은 그 가중치를 그대로 잃는 것이 의도된 동작임이 분명해졌다. 별개인 effectiveness 점수는 재분배하는 예외로 계속 문서화된다.
+- suite 모드가 실제로 수집하는 것과 같은 15개 소스를 읽는 것으로 문서화되었다.
+- 24시간 freshness 규칙은 이 플러그인 자체의 동작으로 문서화되었다. deep-work 는 자체의 더 긴 staleness 기준으로 리포트를 읽는다.
+- envelope 판독 규칙이 판독기별로 문서화되어, 더 엄격한 suite 모드 검증이 legacy 대시보드의 동작으로 오인되지 않는다.
 
 ## [1.5.0] — 2026-07-10 (네이티브 Codex 및 Windows 지원)
 

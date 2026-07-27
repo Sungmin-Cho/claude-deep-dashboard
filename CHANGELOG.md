@@ -11,19 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `CLAUDE.md` is now a one-line `@AGENTS.md` import, making `AGENTS.md` the single cross-model source for shared runtime rules, gotchas, and cross-plugin contracts — the two files together shrink from 17,788 to 9,396 bytes (−47.2 %).
-- Both skill bodies drop restated and self-duplicating prose while keeping every execution contract: 17,418 → 13,219 bytes (−24.1 %).
-- Skill `description` frontmatter is halved in both skills (655 → 326 and 804 → 401 bytes) with all 16 English and Korean trigger phrases preserved verbatim.
-
-> Both totals are larger than the mid-review measurement (8,248 and 12,503 bytes): independent review found four documented contracts that were wrong rather than merely verbose, and correcting them cost bytes.
+- Claude Code and Codex now read one shared project guide instead of two copies that could drift apart.
+- Both skill guides are substantially shorter, leaving more of the session context window for the user's own work.
+- Both skill descriptions are half their previous length, with every English and Korean trigger phrase preserved verbatim.
 
 ### Fixed
 
-- The `not_applicable` weight-redistribution claim is removed from the guides and the READMEs: the harnessability scorer never renormalises dimension weights, so a wholly not-applicable dimension costs its full weight — a deliberate penalty, not a bug. The separate *effectiveness* scorer does redistribute, and is now documented as the deliberate exception.
-- The suite collector's source count is corrected from 11 to 15 (12 M3 envelopes + 3 NDJSON logs, including the four M5 handoff and compaction-state sources). It reads exactly the 15 `EXPECTED_SOURCES` that form the `missing_signal_ratio` denominator; the claim that the two sets deliberately differed was a pre-M5 leftover.
-- The documented per-dimension scoring formula is corrected from `round((passed / applicable) * 10) / 10` to `round((passed / applicable) * 100) / 10` — the former describes a 0–1 fraction, while the scorer emits 0–10 — and the total's final rounding step is now shown.
-- The envelope-reader contract is split per reader: only the suite collector validates required payload fields, and it records failures as telemetry, while the legacy collector passes non-envelope artifacts through untouched and warns on stderr.
-- The 24-hour freshness threshold is documented at its real implementation site, `DAY_MS` in `scripts/dashboard-cli.js`, instead of the scorer, and its boundary is stated as `≥ 24 h` to match `age >= DAY_MS`.
+- The documented dimension score formula now matches the 0–10 score the scorer actually reports.
+- Harnessability dimension weights are documented as never redistributed, so a dimension with no applicable checks costs its full weight by design; the separate effectiveness score remains the documented exception that does redistribute.
+- Suite mode is documented as reading 15 sources, matching what it collects.
+- The 24-hour freshness rule is documented as this plugin's own behaviour; deep-work reads the report under its own, longer staleness window.
+- Envelope-reading rules are documented per reader, so the stricter suite-mode validation is no longer attributed to the legacy dashboard.
 
 ## [1.5.0] — 2026-07-10 (native Codex and Windows support)
 

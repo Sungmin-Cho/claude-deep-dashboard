@@ -79,17 +79,19 @@ Identity, all four exact — these are what downstream identity guards check:
 - `envelope.schema.name === "harnessability-report"`
 - `envelope.schema.version === "1.0"`
 
-## Freshness contract (shared with consumers)
+## Freshness contract (this plugin)
 
 The report is fresh for **24 hours after `envelope.generated_at`**; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
-`DAY_MS` in `scripts/dashboard-cli.js`, and governs deep-work Phase 1 Research, the legacy-mode
-preflight, and both `skills/*/SKILL.md` (plus `<plugin-root>/AGENTS.md`) — change them together.
+`DAY_MS` in `scripts/dashboard-cli.js`; its prose sites are both `skills/*/SKILL.md` and
+`<plugin-root>/AGENTS.md` — change them together. It governs this plugin's own reuse only; other
+plugins set their own policy.
 
 ## Consumed by
 
-- **deep-work** Phase 1 Research — re-runs this skill when the report is missing or past the 24 h
-  threshold, otherwise unwraps the envelope and uses the cached payload. Envelope-aware.
-- **deep-harness-dashboard** legacy mode step 1 — same 24 h rule via the dashboard CLI's freshness
-  preflight, before `lib/dashboard/collector.js` reads the envelope. Aggregator-pattern producer:
-  it writes only the target project's refreshed report.
+- **deep-harness-dashboard** legacy mode step 1 — applies the 24 h rule above through the dashboard
+  CLI's freshness preflight, re-running the scorer before `lib/dashboard/collector.js` reads the
+  envelope. Aggregator-pattern producer: it writes only the target project's refreshed report.
+- **deep-work** Phase 1 Research — reads the report **read-only** when it exists, applying the same
+  envelope identity guards, and skips one older than **7 days** (its own policy, not the 24 h
+  threshold). It never re-runs the scorer.

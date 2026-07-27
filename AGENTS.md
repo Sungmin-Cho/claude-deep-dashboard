@@ -9,7 +9,7 @@ is built-in `node --test`.
 Manifests: `.claude-plugin/plugin.json` (Claude Code) + `.codex-plugin/plugin.json` (Codex);
 skills in `skills/`, diagnostics in `lib/`, CLIs in `scripts/`. Version:
 `jq -r .version .claude-plugin/plugin.json`; history in [`CHANGELOG.md`](CHANGELOG.md); doc rules
-in `docs/DOCS_RULE.md`.
+in `docs/DOCS_RULE.md` (local-only, gitignored).
 
 ## Surfaces
 
@@ -20,9 +20,9 @@ in `docs/DOCS_RULE.md`.
 - `/deep-harness-dashboard --suite` — M4+ telemetry: appends `.deep-dashboard/suite-metrics.jsonl`,
   renders `suite-report.md`, optional OTLP export.
 
-deep-work Phase 1 Research invokes `/deep-harnessability` when the report is missing or ≥ 24 h old;
-legacy mode runs the scorer inline when stale, then renders. `--suite` is manual-only — no other
-plugin triggers it. `.deep-dashboard/` output belongs to the **target** project, never to this
+Legacy mode runs the scorer inline when the report is stale, then renders. deep-work Phase 1
+Research consumes the report **read-only** and never triggers a scorer run. `--suite` is
+manual-only — no other plugin triggers it. `.deep-dashboard/` output belongs to the **target** project, never to this
 repo, unless it is an intentional fixture.
 
 ## Contracts live in code — read the file, don't restate it
@@ -48,10 +48,12 @@ one decimal, not a 0–1 fraction — and `total = round(Σ(score × weight) × 
 `not_applicable` checks are excluded from **both** the numerator and the denominator of their own
 dimension's score.
 
-**Freshness**: fresh for 24 h after `envelope.generated_at`; missing, malformed,
+**Freshness — this plugin only**: fresh for 24 h after `envelope.generated_at`; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
-`DAY_MS` in `scripts/dashboard-cli.js`, and governs deep-work Phase 1 Research, the legacy-mode
-preflight, and both `skills/*/SKILL.md` — change all of them together.
+`DAY_MS` in `scripts/dashboard-cli.js`, and governs the legacy-mode preflight; its prose sites are
+both `skills/*/SKILL.md` and this file — change them together. It binds no other plugin: deep-work
+Phase 1 Research reads the report read-only and skips one older than **7 days** by its own policy
+(deep-work `skills/deep-research/SKILL.md` §Cross-Plugin Context).
 
 ## Reading other plugins' envelopes
 

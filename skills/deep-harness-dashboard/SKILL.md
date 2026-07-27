@@ -60,20 +60,23 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
 
 ## Suite mode steps (`--suite`)
 
-The call order is load-bearing — the trend baseline must be read *before* the append.
+One ordering constraint: read the previous snapshot **before** appending the new one, or the trend
+baseline becomes the row just written. The sequence below mirrors `runSuite` in
+`scripts/dashboard-cli.js`.
 
 1. `collectSuite(projectRoot)` from `lib/suite-collector.js` — the 15 sources below. Honors
    `options.wikiRoot` or `DEEP_WIKI_ROOT` for external wiki vaults.
-2. `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17 metrics per
+2. `readRecentSnapshots(projectRoot, 1)` — its first result is the previous trend baseline (or
+   `null`). This is the step that must precede step 4.
+3. `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17 metrics per
    `lib/metrics-catalog.yaml`.
-3. `readRecentSnapshots(projectRoot, 1)` **before** appending, so its first result is the previous
-   trend baseline (or `null`).
 4. `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
    `.deep-dashboard/suite-metrics.jsonl`.
 5. `writeSuiteReportFile(snapshot, previous, projectRoot)` — renders
    `.deep-dashboard/suite-report.md` with trend arrows (↑/↓/→/·/?).
-6. **Optional OTLP export** — only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, run
-   `exportSnapshot(snapshot)` from `lib/otel.js`. Failures are non-fatal and never block rendering.
+6. `exportSnapshot(snapshot)` from `lib/otel.js` — always called; without
+   `OTEL_EXPORTER_OTLP_ENDPOINT` it returns `{ exported: false, reason: 'no-endpoint' }` and does
+   nothing. Export failures are non-fatal and never block rendering.
 
 ## Options
 
@@ -85,8 +88,9 @@ The call order is load-bearing — the trend baseline must be read *before* the 
 
 `.deep-dashboard/harnessability-report.json` is fresh for **24 hours after
 `envelope.generated_at`**. The threshold is implemented once, as `DAY_MS` in
-`scripts/dashboard-cli.js`, and governs legacy-mode step 1 above, deep-work Phase 1 Research's
-reuse rule, and both `skills/*/SKILL.md` (plus `<plugin-root>/AGENTS.md`) — change them together.
+`scripts/dashboard-cli.js`, and governs legacy-mode step 1 above; its prose sites are both
+`skills/*/SKILL.md` and `<plugin-root>/AGENTS.md` — change them together. It binds no other plugin:
+deep-work Phase 1 Research reads the report read-only under its own 7-day policy.
 
 ## Envelope-aware sources (legacy mode, 5)
 
@@ -100,6 +104,10 @@ reuse rule, and both `skills/*/SKILL.md` (plus `<plugin-root>/AGENTS.md`) — ch
 
 `.deep-review/fitness.json` and `.deep-review/receipts/*.json` stay legacy pass-through;
 deep-review's envelope-bound artifact (`recurring-findings.json`) is suite-mode only.
+
+These 5 envelope-aware rows are **not** the 5 keys `collectData()` returns (`deepWork`,
+`deepReview`, `deepDocs`, `harnessability`, `deepEvolve`): the two deep-work artifacts collapse
+into one key, and `deepReview` contributes no envelope row. Same count, different grouping.
 
 ## Suite mode sources (15)
 
