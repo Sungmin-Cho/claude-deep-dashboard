@@ -31,7 +31,7 @@ repo, unless it is an intentional fixture.
   `PAYLOAD_SCHEMA_MAJOR`, `ENVELOPE_ROLLOUT`, `ADOPTION_LEDGER` (per-plugin adoption dates).
 - `lib/metrics-catalog.yaml` — authoritative spec for all 17 suite metrics.
 - `lib/harnessability/checklist.json` — dimension ids, weights, the 17 checks.
-- `lib/test-catalog-manifest.json` — mirror of suite `docs/test-catalog.md` §1–§10;
+- `lib/test-catalog-manifest.json` — mirror of suite `docs/test-catalog.md` §1–§8;
   `check:catalog-drift` fails on desync.
 - `test/fixtures/handoff-roundtrip/` — byte-identical mirror of suite §9; re-copy on suite update
   before release. `lib/e2e-suite-roundtrip.test.js` asserts the M5 metric values from it.
@@ -64,8 +64,10 @@ The two readers are deliberately not equally strict (the duplication is intentio
 - `schema_version === "1.0"`, strict string (legacy deep-docs v1.1.0 emitted numeric `2`)
 - `envelope` is a non-null object, not an array (`typeof [] === "object"`)
 - identity triple matches: `producer`, `artifact_kind`, `schema.name`
-- payload schema MAJOR matches `PAYLOAD_SCHEMA_MAJOR[kind]` (MINOR is additive, accepted)
-- `payload` is a non-null, non-array object carrying every `PAYLOAD_REQUIRED_FIELDS[kind]` field
+- payload schema MAJOR matches `PAYLOAD_SCHEMA_MAJOR['<producer>/<artifact_kind>']` (MINOR is
+  additive, accepted)
+- `payload` is a non-null, non-array object carrying every
+  `PAYLOAD_REQUIRED_FIELDS['<producer>/<artifact_kind>']` field
 
 A failure returns `{ failure: <reason>, source }`, which the caller records in the snapshot's
 failure list — **telemetry only, nothing on stderr** — and that list is what feeds
@@ -107,17 +109,22 @@ exactly that set: 12 envelopes (deep-work
   a snapshot of only reverse handoffs still scores high — by design.
 - **A handoff roundtrip has no receiver-receipt file.** The receiver of a forward handoff (A→B)
   signals success by emitting a **reverse** handoff (B→A), which the aggregator counts as the
-  roundtrip. Multi-ack (2 reverse to 1 forward) and unrelated-child filtering are covered by
-  `lib/e2e-suite-roundtrip.test.js` Round 3 C3.
-- **Legacy-fallback cutoff `2026-11-07`, exclusive.** Before it, missing envelopes are silently
-  accepted; after it, a `legacy_fallback_warning` is emitted.
-- **The wiki `log.jsonl` is not a hook log** — wiki ingest/query operations append to it, so the
-  suite collector ignores non-hook events from it. Hook block counting spans the 3 NDJSON logs and
-  keys on `event ∈ { hook-block, hook-deny }`; malformed lines are skipped, never fatal.
-- **The scorer resolves its own root literally**: `lib/harnessability/scorer.js` walks upward from
-  its own module path for `producer_version`, never from the caller's cwd — a consumer project may
-  hold an unrelated `.claude-plugin/plugin.json`. Git-state detection uses the `projectRoot`
-  parameter, also never cwd.
+  roundtrip. Multi-ack (2 reverse to 1 forward) and unrelated-child filtering are pinned in
+  `lib/aggregator.test.js`; `lib/e2e-suite-roundtrip.test.js` covers the closed-chain and
+  broken-chain cases only.
+- **Legacy-fallback cutoff `2026-11-07`, exclusive** — but the switch is **not wired up**.
+  `legacyFallbackExpired()` exists in `lib/suite-constants.js` and is unit-tested, and no emit path
+  calls it, so no `legacy_fallback_warning` is produced today, before or after the cutoff. Treat the
+  cutoff as a planned behaviour, not a current one.
+- **The wiki `log.jsonl` is not a hook log.** `suite.hooks.block_rate` and `error_rate` skip every
+  source whose `kind !== 'hook-log'`, so the wiki vault log is excluded **as a source** — even a
+  well-formed hook event inside it could never be counted. Hook metrics therefore span exactly the
+  two hook logs (deep-work, deep-evolve); the wiki log feeds wiki metrics only. Blocking keys on
+  `event ∈ { hook-block, hook-deny }`; malformed lines are skipped, never fatal.
+- **The scorer resolves its own root literally**: `lib/harnessability/scorer.js` reads
+  `producer_version` from `../../.claude-plugin/plugin.json` resolved against its own module path,
+  never from the caller's cwd — a consumer project may hold an unrelated `.claude-plugin/plugin.json`.
+  Git-state detection uses the `projectRoot` parameter, also never cwd.
 - **The duplicated envelope-unwrap helpers** in `lib/dashboard/collector.js` and
   `lib/suite-collector.js` are intentional (PR 1 scope boundary; consolidation deferred to M5).
 

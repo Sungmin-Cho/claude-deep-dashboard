@@ -92,6 +92,8 @@ plugins set their own policy.
 - **deep-harness-dashboard** legacy mode step 1 — applies the 24 h rule above through the dashboard
   CLI's freshness preflight, re-running the scorer before `lib/dashboard/collector.js` reads the
   envelope. Aggregator-pattern producer: it writes only the target project's refreshed report.
-- **deep-work** Phase 1 Research — reads the report **read-only** when it exists, applying the same
-  envelope identity guards, and skips one older than **7 days** (its own policy, not the 24 h
-  threshold). It never re-runs the scorer.
+- **deep-work** Phase 1 Research — reads the report **read-only** when it exists and skips one
+  older than **7 days** (its own policy, not the 24 h threshold above). It never re-runs the
+  scorer, and it checks only the identity triple (`producer`, `artifact_kind`, `schema.name`),
+  falling back to legacy non-envelope files; this plugin's own preflight additionally requires
+  `schema_version` and `envelope.schema.version` to be `"1.0"`.
