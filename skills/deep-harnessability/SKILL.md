@@ -57,10 +57,10 @@ combined with `--project-root` are usage errors.
      CI/CD            ██░░░░░░░░  2/10  ✗ no CI config detected
    ```
 
-3. For every dimension in `payload.dimensions[]` scoring **below 5**, present the top 3 entries of
+3. If any dimension in `payload.dimensions[]` scores **below 5**, present the top 3 entries from
    `payload.recommendations[]` with estimated impact. 5 is the scorer's recommendation-emit
-   boundary (`lib/harnessability/scorer.js`) — at or above it, that dimension contributes no
-   recommendations.
+   boundary (`lib/harnessability/scorer.js`); `payload.recommendations[]` is one flat array to
+   which only sub-5 dimensions contribute.
 
 4. If `payload.topology_hints` is non-null, render each string as a suggestion.
    `payload.topology` and `payload.topology_hints` are **caller-injected** via
