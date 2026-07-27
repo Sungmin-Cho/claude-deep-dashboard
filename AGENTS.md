@@ -44,13 +44,13 @@ Identity, all four exactly: `envelope.producer === "deep-dashboard"`,
 Required payload fields: `PAYLOAD_REQUIRED_FIELDS['deep-dashboard/harnessability-report']`.
 
 **Scoring**: `score = round((passed / applicable) * 10) / 10` per dimension,
-`total = Σ(score × weight)`. `not_applicable` checks leave **both** numerator and denominator, and
-their dimension weight is redistributed proportionally to the others — so a Python-only repo is
-never penalised for TypeScript checks.
+`total = Σ(score × weight)`. `not_applicable` checks leave **both** the numerator and the
+denominator of their own dimension's score.
 
 **Freshness**: fresh for 24 h after `envelope.generated_at`; missing, malformed,
-identity-mismatched, future-dated, or ≥ 24 h → recompute. One threshold governs deep-work Phase 1
-Research, the legacy-mode preflight, and both `skills/*/SKILL.md` — change them together.
+identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
+`DAY_MS` in `scripts/dashboard-cli.js`, and governs deep-work Phase 1 Research, the legacy-mode
+preflight, and both `skills/*/SKILL.md` — change all of them together.
 
 ## Reading other plugins' envelopes
 
@@ -76,6 +76,12 @@ deliberately different numbers — don't "fix" one to match the other.
 
 ## Gotchas
 
+- **Dimension weights are never renormalised.** A dimension whose checks are *all*
+  `not_applicable` scores `0` and still contributes `0 × weight` to `total`, so a Go/Rust/Java repo
+  really is marked down for `type_safety` (0.25 of the total). This ecosystem-mismatch penalty is
+  deliberate — weight redistribution was considered and rejected to keep `payload.total` comparable
+  across snapshots — and `lib/harnessability/missing-signal.test.js` pins it. Changing the math
+  needs its own PR and version bump.
 - **`null` ≠ missing signal.** A metric is `null` when its own source is absent, insufficient, or
   uncomputable. `missing_signal_ratio` = sources with no/invalid data ÷ 15; 0 means full
   observability, 1.0 means diagnostics have degraded to legacy fallback mode.
