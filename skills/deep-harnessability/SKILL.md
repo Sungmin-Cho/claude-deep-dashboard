@@ -1,53 +1,37 @@
 ---
 name: deep-harnessability
-description: This skill should be used when the user asks to assess how "harness-able" a codebase is — diagnosing type safety, module boundaries, test infrastructure, sensor readiness, linter/formatter configuration, and CI/CD presence across 6 weighted dimensions. Trigger phrases include "코드베이스 진단", "harness 준비도", "harnessability 점수", "type safety / 센서 / CI 점검", "harness 가능성 평가", "diagnose codebase", "harness readiness score", "rate this repo". Runs a pure-computational scorer (no LLM inference), emits an M3 envelope to `.deep-dashboard/harnessability-report.json`, and surfaces a 0-10 score plus top recommendations.
+description: Rates codebase harness-ability across 6 weighted dimensions. Triggers on "코드베이스 진단", "harness 준비도", "harnessability 점수", "type safety / 센서 / CI 점검", "harness 가능성 평가", "diagnose codebase", "harness readiness score", "rate this repo". Emits `.deep-dashboard/harnessability-report.json`.
 ---
 
 # Harnessability Diagnosis
 
-Assess how "harness-able" this codebase is. All measurements are computational — no LLM inference needed.
+Assess how "harness-able" this codebase is. Every measurement is computational — no LLM inference.
 
 ## Invocation
 
-- Slash command: `/deep-harnessability` (registered via this skill's frontmatter).
-- Direct script: `node <plugin-root>/lib/harnessability/scorer.js --project-root <target-project-root>`.
+Slash command `/deep-harnessability`, or directly
+`node <plugin-root>/lib/harnessability/scorer.js --project-root <target-project-root>`.
 
 ### Loaded-SKILL routing handoff
 
-The host passes the absolute path of this exact loaded file as
-`loadedSkillPath` to its execution tool. Derive
-`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, then construct the
-absolute `lib/harnessability/scorer.js` path from that root. The caller's
-current directory is neither the plugin root nor an implicit target root: pass
-the target explicitly as `--project-root`.
-
-- **Claude Code:** its plugin launcher obtains the absolute loaded path as
-  `realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harnessability/SKILL.md)` and passes
-  that exact path as `loadedSkillPath`. `CLAUDE_PLUGIN_ROOT` is only the Claude
-  bootstrap used to form the absolute loaded path; routing then uses the
-  path-derived root.
-- **Codex:** the marketplace skill loader passes the absolute filesystem path
-  of the selected `skills/deep-harnessability/SKILL.md` as `loadedSkillPath` in
-  the execution request. Codex does not invent a `CLAUDE_*` or other
-  environment variable. If the path is unavailable, fail with a routing error
-  rather than inferring a plugin root from the target cwd.
-
-Prefer passing the absolute Node argv directly through the host execution tool.
-These shell commands are fallback documentation only. For the PowerShell form,
-substitute `C:\absolute\plugin` first with the real absolute path derived three
-levels above `loadedSkillPath`; do not execute an argument containing `..`.
+`pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, where `loadedSkillPath` is this file's
+absolute path as the host passes it — Claude Code derives it from
+`realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harnessability/SKILL.md)`; Codex passes the loaded
+`SKILL.md` path itself and defines no `CLAUDE_*` variable. Build the scorer path from `pluginRoot`;
+if `loadedSkillPath` is unavailable, fail with a routing error rather than inferring a root. The
+caller's cwd is neither the plugin root nor an implicit target root, so always pass the target as
+`--project-root`. Prefer absolute Node argv through the host execution tool — the commands below
+are fallback documentation; substitute the real absolute root and never execute an argument
+containing `..`.
 
 ```text
-POSIX scorer:         node "$CLAUDE_PLUGIN_ROOT/lib/harnessability/scorer.js" --project-root "$PWD"
-PowerShell scorer:    node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
+POSIX scorer:      node "$CLAUDE_PLUGIN_ROOT/lib/harnessability/scorer.js" --project-root "$PWD"
+PowerShell scorer: node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
 ```
 
-One positional root remains a compatibility form (`node scorer.js PATH`), but
-it is still explicit. The scorer rejects a missing root, duplicate flags, extra
-positionals, and a positional root combined with `--project-root` as usage
-errors; it never defaults to `process.cwd()`.
-
-Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is installed and the report is missing or older than 24 hours (see "Consumed by" below for the shared freshness contract).
+The scorer never defaults to `process.cwd()`. One positional root (`node scorer.js PATH`) stays a
+compatibility form; a missing root, duplicate flags, extra positionals, or a positional root
+combined with `--project-root` are usage errors.
 
 ## Steps
 
@@ -55,15 +39,13 @@ Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is
    ```bash
    node "<absolute-plugin-root>/lib/harnessability/scorer.js" --project-root "<absolute-target-project-root>"
    ```
-   This outputs JSON (the M3 envelope) on stdout and writes the same envelope
-   to `.deep-dashboard/harnessability-report.json`. The domain data (score,
-   grade, dimensions, recommendations) is inside `payload`.
+   It prints the M3 envelope on stdout and writes the same envelope to
+   `.deep-dashboard/harnessability-report.json`.
 
-2. Display the formatted report to the user using bar chart format. Read
-   `payload.total`, `payload.grade`, and `payload.dimensions[]` from the
-   envelope (NOT the top-level — those keys belong to the envelope wrapper).
-   Each bar is rendered with block characters `█` (filled) and `░` (empty)
-   over a fixed 10-character width, where `filled = round(score)`.
+2. Render the report as a bar chart from `payload.total`, `payload.grade`, and
+   `payload.dimensions[]` — NOT the top-level keys, which belong to the envelope wrapper. Bars use
+   `█` (filled) and `░` (empty) over a fixed 10-character width with `filled = round(score)`; the
+   labels are display abbreviations of `payload.dimensions[].label`.
    ```
    [Harnessability Report] Score: X.X/10 (Grade)
 
@@ -75,44 +57,23 @@ Also runs automatically inside deep-work Phase 1 Research when deep-dashboard is
      CI/CD            ██░░░░░░░░  2/10  ✗ no CI config detected
    ```
 
-   Label-to-payload mapping (the bar labels are display-only abbreviations of
-   `payload.dimensions[].label`):
+3. For every dimension in `payload.dimensions[]` scoring **below 5**, present the top 3 entries of
+   `payload.recommendations[]` with estimated impact. 5 is the scorer's recommendation-emit
+   boundary (`lib/harnessability/scorer.js`) — at or above it, that dimension contributes no
+   recommendations.
 
-   | Bar label | `payload.dimensions[].id` | Weight |
-   |---|---|---|
-   | Type Safety | `type_safety` | 0.25 |
-   | Module Bounds | `module_boundaries` | 0.20 |
-   | Test Infra | `test_infra` | 0.20 |
-   | Sensor Ready | `sensor_readiness` | 0.15 |
-   | Linter/Fmt | `linter_formatter` | 0.10 |
-   | CI/CD | `ci_cd` | 0.10 |
+4. If `payload.topology_hints` is non-null, render each string as a suggestion.
+   `payload.topology` and `payload.topology_hints` are **caller-injected** via
+   `scoreHarnessability(projectRoot, { topology, topologyHints })`; the CLI entry injects neither,
+   so both are `null` in standalone runs — then this step is a no-op.
 
-3. If any dimension in `payload.dimensions[]` scores **below 5** (Fair/Poor
-   band — the same boundary the grade table in README uses to separate
-   actionable from healthy dimensions), present the top 3 entries from
-   `payload.recommendations[]` with estimated impact. The 5-point boundary is
-   the scorer's internal recommendation-emit threshold (see
-   `lib/harnessability/scorer.js`): below 5 the scorer surfaces failing
-   checks into `payload.recommendations[]`; at or above 5 the dimension is
-   self-healing and no recommendations are emitted.
+## Output file
 
-4. If `payload.topology_hints` is non-null, surface topology-specific advice.
-   `payload.topology` and `payload.topology_hints` are **caller-injected**
-   via `scoreHarnessability(projectRoot, { topology, topologyHints })`
-   (see `lib/harnessability/scorer.js`). The CLI entry (`node scorer.js
-   --project-root <projectRoot>`) does not inject either, so both fields default to `null`
-   in standalone runs — render this step as a no-op when both are null.
-   When a parent flow (e.g. deep-work Phase 1) does inject `topology_hints`
-   (a `string[]`), render each line as a suggestion.
+`.deep-dashboard/harnessability-report.json` is a deep-suite M3 cross-plugin envelope
+(claude-deep-suite `docs/envelope-migration.md` §1): top-level `schema_version: "1.0"` + `envelope`
+(producer, run_id ULID, git, provenance) + `payload` (score, grade, dimensions, recommendations).
+Identity, all four exact — these are what downstream identity guards check:
 
-## Output File
-
-The result file at `.deep-dashboard/harnessability-report.json` is the
-**claude-deep-suite M3 cross-plugin envelope** (`docs/envelope-migration.md` §1):
-top-level `schema_version: "1.0"` + `envelope` block (producer, run_id ULID,
-git, provenance) + `payload` (score, grade, dimensions, recommendations).
-
-Envelope identity (defense-in-depth identity guards for downstream readers):
 - `envelope.producer === "deep-dashboard"`
 - `envelope.artifact_kind === "harnessability-report"`
 - `envelope.schema.name === "harnessability-report"`
@@ -120,23 +81,15 @@ Envelope identity (defense-in-depth identity guards for downstream readers):
 
 ## Freshness contract (shared with consumers)
 
-The report is treated as fresh for **24 hours after `envelope.generated_at`**.
-This single threshold governs every downstream consumer in the suite —
-update the threshold here, in `lib/harnessability/scorer.js`, and in the
-sibling `deep-harness-dashboard` skill together so the policy stays
-unambiguous.
+The report is fresh for **24 hours after `envelope.generated_at`**; missing, malformed,
+identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
+`DAY_MS` in `scripts/dashboard-cli.js`, and governs deep-work Phase 1 Research, the legacy-mode
+preflight, and both `skills/*/SKILL.md` (plus `AGENTS.md`) — change all of them together.
 
 ## Consumed by
 
-- **deep-work** Phase 1 Research — re-runs this skill when the file is missing
-  or older than the 24h freshness threshold above; otherwise unwraps the
-  envelope and uses the cached payload. Envelope-aware.
-- **deep-harness-dashboard** (legacy mode, step 1) — same 24h re-run rule via
-  the dashboard CLI's freshness preflight before `collector.js` reads the
-  envelope. Aggregator-pattern producer; the dashboard writes only the target
-  project's refreshed report.
-
-## Usage
-
-Run independently: `/deep-harnessability`
-Or automatically in deep-work Phase 1 Research if deep-dashboard is installed.
+- **deep-work** Phase 1 Research — re-runs this skill when the report is missing or past the 24 h
+  threshold, otherwise unwraps the envelope and uses the cached payload. Envelope-aware.
+- **deep-harness-dashboard** legacy mode step 1 — same 24 h rule via the dashboard CLI's freshness
+  preflight, before `lib/dashboard/collector.js` reads the envelope. Aggregator-pattern producer:
+  it writes only the target project's refreshed report.
