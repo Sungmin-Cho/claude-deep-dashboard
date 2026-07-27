@@ -7,6 +7,19 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 를 따르며,
 [유의적 버전](https://semver.org/spec/v2.0.0.html) 을 준수합니다.
 
+## [1.5.1] — 2026-07-27 (Claude 5 컨텍스트 엔지니어링 규칙에 따른 컨텍스트 다이어트)
+
+### 변경
+
+- `CLAUDE.md` 는 한 줄 `@AGENTS.md` import 로 바뀌었고, 공유 런타임 규칙·gotcha·크로스 플러그인 계약의 단일 소스는 `AGENTS.md` 가 된다 — 두 파일 합산 17,788 → 8,248 바이트 (−53.6 %).
+- 두 skill 본문에서 중복·재서술 문장을 걷어내되 실행 계약은 전부 유지한다: 17,418 → 12,503 바이트 (−28.2 %).
+- 두 skill 의 `description` frontmatter 를 절반으로 줄였고 (655 → 326, 804 → 401 바이트), 영어·한국어 트리거 문구 16개는 모두 원문 그대로 보존한다.
+
+### 수정
+
+- 가이드에서 `not_applicable` 가중치 재분배 서술을 제거한다: scorer 는 dimension 가중치를 재정규화하지 않으므로, 전부 not-applicable 인 dimension 은 해당 가중치를 그대로 잃는다 — 버그가 아니라 의도된 페널티다.
+- 24시간 freshness 임계값의 실제 구현 위치를 scorer 가 아닌 `scripts/dashboard-cli.js` 의 `DAY_MS` 로 바로잡는다.
+
 ## [1.5.0] — 2026-07-10 (네이티브 Codex 및 Windows 지원)
 
 ### 추가

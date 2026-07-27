@@ -7,6 +7,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-07-27 (context diet per Claude 5 context-engineering rules)
+
+### Changed
+
+- `CLAUDE.md` is now a one-line `@AGENTS.md` import, making `AGENTS.md` the single cross-model source for shared runtime rules, gotchas, and cross-plugin contracts — the two files together shrink from 17,788 to 8,248 bytes (−53.6 %).
+- Both skill bodies drop restated and self-duplicating prose while keeping every execution contract: 17,418 → 12,503 bytes (−28.2 %).
+- Skill `description` frontmatter is halved in both skills (655 → 326 and 804 → 401 bytes) with all 16 English and Korean trigger phrases preserved verbatim.
+
+### Fixed
+
+- The `not_applicable` weight-redistribution claim is removed from the guides: the scorer never renormalises dimension weights, so a wholly not-applicable dimension costs its full weight — a deliberate penalty, not a bug.
+- The 24-hour freshness threshold is documented at its real implementation site, `DAY_MS` in `scripts/dashboard-cli.js`, instead of the scorer.
+
 ## [1.5.0] — 2026-07-10 (native Codex and Windows support)
 
 ### Added

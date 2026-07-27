@@ -15,7 +15,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const PLUGIN_NAME = 'deep-dashboard';
-const RELEASE_VERSION = '1.5.0';
+const RELEASE_VERSION = '1.5.1';
 const REQUIRED_SKILLS = ['deep-harness-dashboard', 'deep-harnessability'];
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const EXCLUDED_COPY_ROOTS = new Set([

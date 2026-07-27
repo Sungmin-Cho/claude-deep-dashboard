@@ -15,7 +15,7 @@ async function writeMinimalCandidate(root) {
     join(root, '.codex-plugin', 'plugin.json'),
     JSON.stringify({
       name: 'deep-dashboard',
-      version: '1.5.0',
+      version: '1.5.1',
       skills: './skills/'
     })
   );
@@ -40,7 +40,7 @@ test('candidate fixture pins the release identity and both discoverable skills',
     sourceSha
   });
 
-  assert.equal(fixture.marketplace.name, 'deep-dashboard-1-5-0-candidate');
+  assert.equal(fixture.marketplace.name, 'deep-dashboard-1-5-1-candidate');
   assert.equal(fixture.marketplace.plugins.length, 1);
   assert.deepEqual(fixture.marketplace.plugins[0].source, {
     source: 'url',
@@ -51,7 +51,7 @@ test('candidate fixture pins the release identity and both discoverable skills',
     installation: 'AVAILABLE',
     authentication: 'ON_USE'
   });
-  assert.equal(fixture.pluginManifest.version, '1.5.0');
+  assert.equal(fixture.pluginManifest.version, '1.5.1');
   assert.equal(fixture.pluginManifest.skills, './skills/');
   assert.deepEqual(
     fixture.skillEntries.map(({ name }) => name).sort(),
