@@ -69,17 +69,22 @@ The two readers are deliberately not equally strict (the duplication is intentio
 - `payload` is a non-null, non-array object carrying every
   `PAYLOAD_REQUIRED_FIELDS['<producer>/<artifact_kind>']` field
 
-A failure returns `{ failure: <reason>, source }`, which the caller records in the snapshot's
-failure list — **telemetry only, nothing on stderr** — and that list is what feeds
-`missing_signal_ratio`.
+A failure returns `{ failure: <reason>, source }` — never `null`, never a throw — and the caller
+records it per source with **nothing written to stderr**. Those counts sum into
+`suite.artifact.schema_failures_total`; they do **not** drive `missing_signal_ratio`, which
+independently counts how many of the 15 `EXPECTED_SOURCES` yielded *zero usable signal* (an envelope
+source with no accepted envelope; an NDJSON log missing, errored, or empty). The two move
+independently: one accepted envelope beside three rejected ones is 3 schema failures and 0 missing
+signal, while an absent `last-scan.json` is 1/15 missing signal and 0 failures.
 
 **Legacy collector** — `unwrapEnvelope` in `lib/dashboard/collector.js` **passes anything not
 envelope-shaped (including `null`) through unchanged**, so pre-envelope artifacts keep working, and
 it applies **no required-field check**. Envelope-shaped input still gets the identity, schema-MAJOR,
 and payload-object guards; violating any of them returns `null` **plus a `console.warn` on stderr**.
 
-Neither reader ever throws. Consumers read `null` as "no data" and skip that dimension; one
-plugin's envelope landing under another's read path (e.g. a symlink) is never silently trusted.
+Neither reader ever throws, and only the legacy reader resolves a rejection to `null` — consumers
+read that `null` as "no data" and skip the dimension. Neither one silently trusts a plugin's
+envelope landing under another's read path (e.g. via a symlink).
 
 The 15 `EXPECTED_SOURCES` are the `missing_signal_ratio` denominator, and the suite collector reads
 exactly that set: 12 envelopes (deep-work
@@ -105,13 +110,17 @@ exactly that set: 12 envelopes (deep-work
 - **`suite.wiki.auto_ingest_candidates_total` is deprecated** — wire key preserved, value pinned
   `null` (no durable producer signal). `suite.wiki.ingest_actions_total` replaces it.
 - **Chain completeness is snapshot-only.** `suite.cross_plugin.run_id_chain_completeness` =
-  envelopes with a valid in-suite parent ÷ total. It validates no DAG and no transitive closure, so
-  a snapshot of only reverse handoffs still scores high — by design.
-- **A handoff roundtrip has no receiver-receipt file.** The receiver of a forward handoff (A→B)
-  signals success by emitting a **reverse** handoff (B→A), which the aggregator counts as the
-  roundtrip. Multi-ack (2 reverse to 1 forward) and unrelated-child filtering are pinned in
-  `lib/aggregator.test.js`; `lib/e2e-suite-roundtrip.test.js` covers the closed-chain and
-  broken-chain cases only.
+  envelopes whose `parent_run_id` resolves ÷ envelopes that **declare** a `parent_run_id`
+  (aggregator kinds excluded from both sides). With nothing declaring a parent the value is `null`,
+  not `0`. It validates no DAG and no transitive closure, so a snapshot of only reverse handoffs
+  still scores high — by design.
+- **A handoff roundtrip has no receiver-receipt file.** A forward handoff (A→B) is closed by **any**
+  non-aggregator envelope whose `parent_run_id` is that handoff's `run_id` and whose `producer`
+  equals the handoff's `payload.to.producer` — a reverse handoff, a plain receipt, whatever B emits.
+  Two consequences: a handoff carrying no `payload.to.producer` can **never** be closed and sits in
+  the denominator forever, and a child emitted by the *sender* never counts. Multi-ack, the
+  missing-receiver case, and unrelated-child filtering are pinned in `lib/aggregator.test.js`;
+  `lib/e2e-suite-roundtrip.test.js` covers the closed- and broken-chain cases only.
 - **Legacy-fallback cutoff `2026-11-07`, exclusive** — but the switch is **not wired up**.
   `legacyFallbackExpired()` exists in `lib/suite-constants.js` and is unit-tested, and no emit path
   calls it, so no `legacy_fallback_warning` is produced today, before or after the cutoff. Treat the
