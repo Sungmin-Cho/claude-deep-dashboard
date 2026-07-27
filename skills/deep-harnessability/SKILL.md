@@ -84,7 +84,7 @@ Identity, all four exact — these are what downstream identity guards check:
 The report is fresh for **24 hours after `envelope.generated_at`**; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
 `DAY_MS` in `scripts/dashboard-cli.js`, and governs deep-work Phase 1 Research, the legacy-mode
-preflight, and both `skills/*/SKILL.md` (plus `AGENTS.md`) — change all of them together.
+preflight, and both `skills/*/SKILL.md` (plus `<plugin-root>/AGENTS.md`) — change them together.
 
 ## Consumed by
 

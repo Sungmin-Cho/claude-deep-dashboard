@@ -129,7 +129,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 | Linter & Formatter | 10% | 린터 설정, 포매터 설정(Prettier / Biome / EditorConfig) |
 | CI/CD | 10% | CI 설정 존재(`.github/workflows`, `.gitlab-ci.yml`, `.circleci`), CI 가 테스트 실행 |
 
-각 차원은 통과한 체크 비율로 0–10 점을 받는다. 생태계와 무관한 체크는 `not_applicable` 로 표시되어 해당 차원의 분모에서 제외되고(예: Python 전용 프로젝트의 TypeScript 체크) 가중치는 비례적으로 재분배된다. 최종 점수는 가중 평균이며 소수점 한 자리로 반올림된다.
+각 차원은 통과한 체크 비율로 0–10 점을 받는다. 생태계와 무관한 체크는 `not_applicable` 로 표시되어 해당 차원의 분모에서 제외된다(예: Python 전용 프로젝트의 TypeScript 체크). 차원 가중치는 재분배되지 않는다. 모든 체크가 `not_applicable` 인 차원은 0 점을 받고 그 가중치만큼 그대로 감점되며, 이는 스냅샷 간 점수 비교 가능성을 지키기 위한 의도된 생태계 불일치 페널티다. 최종 점수는 가중 평균이며 소수점 한 자리로 반올림된다.
 
 | 등급 | 점수 |
 |---|---|

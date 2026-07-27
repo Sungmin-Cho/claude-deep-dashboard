@@ -128,7 +128,7 @@ Assesses codebase readiness across 6 dimensions using 17 purely computational de
 | Linter & Formatter | 10% | linter config, formatter config (Prettier / Biome / EditorConfig) |
 | CI/CD | 10% | CI config present (`.github/workflows`, `.gitlab-ci.yml`, `.circleci`), CI runs tests |
 
-Each dimension scores 0–10 from the fraction of its checks that pass. Ecosystem-irrelevant checks are marked `not_applicable` and excluded from that dimension's denominator (e.g. TypeScript checks on a Python-only project), with their weight redistributed proportionally. The final score is the weighted average, rounded to one decimal.
+Each dimension scores 0–10 from the fraction of its checks that pass. Ecosystem-irrelevant checks are marked `not_applicable` and excluded from that dimension's denominator (e.g. TypeScript checks on a Python-only project). Dimension weights are never redistributed: a dimension whose checks are all `not_applicable` scores 0 and still costs its full weight — a deliberate ecosystem-mismatch penalty that keeps scores comparable across snapshots. The final score is the weighted average, rounded to one decimal.
 
 | Grade | Score |
 |---|---|

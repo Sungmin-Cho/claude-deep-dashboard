@@ -9,7 +9,7 @@ Two modes over one CLI:
 
 - **Legacy** (default) — envelope-aware single snapshot: 5 sources, effectiveness score, action
   routing.
-- **Suite** (`--suite`, M4) — accumulates the 17 metrics from 11 sources into an append-only JSONL
+- **Suite** (`--suite`, M4) — accumulates the 17 metrics from 15 sources into an append-only JSONL
   time series plus a trend report. `lib/metrics-catalog.yaml` owns the metric ids, tiers,
   `null_when` semantics, and the deprecated wire keys.
 
@@ -49,7 +49,7 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
    stale: run the scorer and write `.deep-dashboard/harnessability-report.json` **before**
    `collectData(projectRoot)` reads it.
 2. `collectData(projectRoot)` is **M3 envelope-aware** — it applies the identity guards
-   (`AGENTS.md` §Reading other plugins' envelopes), passes legacy unwrapped artifacts through
+   (`<plugin-root>/AGENTS.md` §Reading other plugins' envelopes), passes legacy artifacts through
    unchanged, and resolves identity-mismatched envelopes to `null` as defense-in-depth.
 3. Score with `calculateEffectiveness(data)` from `lib/dashboard/effectiveness.js`, then route
    findings through `getSuggestedActions(data)` from `lib/dashboard/action-router.js`.
@@ -62,7 +62,7 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
 
 The call order is load-bearing — the trend baseline must be read *before* the append.
 
-1. `collectSuite(projectRoot)` from `lib/suite-collector.js` — the 11 sources below. Honors
+1. `collectSuite(projectRoot)` from `lib/suite-collector.js` — the 15 sources below. Honors
    `options.wikiRoot` or `DEEP_WIKI_ROOT` for external wiki vaults.
 2. `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17 metrics per
    `lib/metrics-catalog.yaml`.
@@ -86,7 +86,7 @@ The call order is load-bearing — the trend baseline must be read *before* the 
 `.deep-dashboard/harnessability-report.json` is fresh for **24 hours after
 `envelope.generated_at`**. The threshold is implemented once, as `DAY_MS` in
 `scripts/dashboard-cli.js`, and governs legacy-mode step 1 above, deep-work Phase 1 Research's
-reuse rule, and both `skills/*/SKILL.md` (plus `AGENTS.md`) — change all of them together.
+reuse rule, and both `skills/*/SKILL.md` (plus `<plugin-root>/AGENTS.md`) — change them together.
 
 ## Envelope-aware sources (legacy mode, 5)
 
@@ -101,26 +101,34 @@ reuse rule, and both `skills/*/SKILL.md` (plus `AGENTS.md`) — change all of th
 `.deep-review/fitness.json` and `.deep-review/receipts/*.json` stay legacy pass-through;
 deep-review's envelope-bound artifact (`recurring-findings.json`) is suite-mode only.
 
-## Suite mode sources (M4, 11)
+## Suite mode sources (15)
 
-8 M3 envelopes:
+12 M3 envelopes:
 
 | Producer / kind | Path |
 |---|---|
 | `(deep-work, session-receipt)` | `.deep-work/session-receipt.json` |
 | `(deep-work, slice-receipt)` | `.deep-work/receipts/*.json` |
+| `(deep-work, handoff)` | `.deep-work/handoffs/*.json` + `.deep-work/<session>/handoff.json` |
+| `(deep-work, compaction-state)` | `.deep-work/compaction-states/*.json` + `.deep-work/<session>/compaction-state.json` |
 | `(deep-review, recurring-findings)` | `.deep-review/recurring-findings.json` |
 | `(deep-docs, last-scan)` | `.deep-docs/last-scan.json` |
 | `(deep-evolve, evolve-receipt)` | `.deep-evolve/evolve-receipt.json` |
 | `(deep-evolve, evolve-insights)` | `.deep-evolve/evolve-insights.json` |
+| `(deep-evolve, handoff)` | `.deep-evolve/handoffs/*.json` + `.deep-evolve/<session>/handoff.json` |
+| `(deep-evolve, compaction-state)` | `.deep-evolve/compaction-states/*.json` + `.deep-evolve/<session>/compaction-state.json` |
 | `(deep-dashboard, harnessability-report)` | `.deep-dashboard/harnessability-report.json` |
 | `(deep-wiki, index)` | `<wiki_root>/.wiki-meta/index.json` |
+
+The four M5 rows are `dir+session-glob`: the flat aggregation dir **and** one level of per-session
+subdirs are both read, then merged per (producer, kind). A session subdir named like the flat dir
+(`handoffs`, `compaction-states`) is skipped so nothing is counted twice.
 
 3 NDJSON logs: `(deep-work, hook-log)` `.deep-work/hooks.log.jsonl`, `(deep-evolve, hook-log)`
 `.deep-evolve/hooks.log.jsonl`, `(deep-wiki, log)` `<wiki_root>/log.jsonl`.
 
-These 11 read sources are deliberately not the 15 `EXPECTED_SOURCES` of `lib/suite-constants.js`
-that form the `missing_signal_ratio` denominator — do not "fix" one number to match the other.
+These 15 read sources are exactly the 15 `EXPECTED_SOURCES` of `lib/suite-constants.js` that form
+the `missing_signal_ratio` denominator — the two sets must stay in step.
 
 ## Outputs (suite mode)
 

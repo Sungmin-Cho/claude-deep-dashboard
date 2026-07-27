@@ -20,7 +20,7 @@ in `docs/DOCS_RULE.md`.
 - `/deep-harness-dashboard --suite` — M4+ telemetry: appends `.deep-dashboard/suite-metrics.jsonl`,
   renders `suite-report.md`, optional OTLP export.
 
-deep-work Phase 1 Research invokes `/deep-harnessability` when the report is missing or > 24 h old;
+deep-work Phase 1 Research invokes `/deep-harnessability` when the report is missing or ≥ 24 h old;
 legacy mode runs the scorer inline when stale, then renders. `--suite` is manual-only — no other
 plugin triggers it. `.deep-dashboard/` output belongs to the **target** project, never to this
 repo, unless it is an intentional fixture.
@@ -43,9 +43,10 @@ Identity, all four exactly: `envelope.producer === "deep-dashboard"`,
 `envelope.schema.name === "harnessability-report"`, `envelope.schema.version === "1.0"`.
 Required payload fields: `PAYLOAD_REQUIRED_FIELDS['deep-dashboard/harnessability-report']`.
 
-**Scoring**: `score = round((passed / applicable) * 10) / 10` per dimension,
-`total = Σ(score × weight)`. `not_applicable` checks leave **both** the numerator and the
-denominator of their own dimension's score.
+**Scoring**: `score = round((passed / applicable) * 100) / 10` per dimension — a 0–10 value with
+one decimal, not a 0–1 fraction — and `total = round(Σ(score × weight) × 10) / 10`.
+`not_applicable` checks are excluded from **both** the numerator and the denominator of their own
+dimension's score.
 
 **Freshness**: fresh for 24 h after `envelope.generated_at`; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
@@ -54,34 +55,46 @@ preflight, and both `skills/*/SKILL.md` — change all of them together.
 
 ## Reading other plugins' envelopes
 
-Unwrap only when **all** hold:
+The two readers are deliberately not equally strict (the duplication is intentional — see Gotchas).
+
+**Suite collector** — `unwrapStrict` in `lib/suite-collector.js` unwraps only when **all** hold:
 
 - `schema_version === "1.0"`, strict string (legacy deep-docs v1.1.0 emitted numeric `2`)
 - `envelope` is a non-null object, not an array (`typeof [] === "object"`)
-- `payload` is a non-null, non-array object (primitives rejected)
 - identity triple matches: `producer`, `artifact_kind`, `schema.name`
-- required fields present per `PAYLOAD_REQUIRED_FIELDS[kind]`
+- payload schema MAJOR matches `PAYLOAD_SCHEMA_MAJOR[kind]` (MINOR is additive, accepted)
+- `payload` is a non-null, non-array object carrying every `PAYLOAD_REQUIRED_FIELDS[kind]` field
 
-**A mismatch resolves to `null` plus a stderr warning — never a throw.** Consumers read `null` as
-"no data" and skip that dimension; one plugin's envelope landing under another's read path (e.g. a
-symlink) is never silently trusted.
+A failure returns `{ failure: <reason>, source }`, which the caller records in the snapshot's
+failure list — **telemetry only, nothing on stderr** — and that list is what feeds
+`missing_signal_ratio`.
 
-The 15 `EXPECTED_SOURCES` are the `missing_signal_ratio` denominator — 12 envelopes (deep-work
+**Legacy collector** — `unwrapEnvelope` in `lib/dashboard/collector.js` **passes anything not
+envelope-shaped (including `null`) through unchanged**, so pre-envelope artifacts keep working, and
+it applies **no required-field check**. Envelope-shaped input still gets the identity, schema-MAJOR,
+and payload-object guards; violating any of them returns `null` **plus a `console.warn` on stderr**.
+
+Neither reader ever throws. Consumers read `null` as "no data" and skip that dimension; one
+plugin's envelope landing under another's read path (e.g. a symlink) is never silently trusted.
+
+The 15 `EXPECTED_SOURCES` are the `missing_signal_ratio` denominator, and the suite collector reads
+exactly that set: 12 envelopes (deep-work
 `session-receipt`/`slice-receipt`/`handoff`/`compaction-state`, deep-evolve
 `evolve-receipt`/`evolve-insights`/`handoff`/`compaction-state`, deep-review
 `recurring-findings`, deep-docs `last-scan`, deep-dashboard `harnessability-report`, deep-wiki
 `index`) plus 3 NDJSON logs (`.deep-work/hooks.log.jsonl`, `.deep-evolve/hooks.log.jsonl`,
-`<wiki_root>/log.jsonl`). The collector's 11 read sources and this 15-entry denominator are
-deliberately different numbers — don't "fix" one to match the other.
+`<wiki_root>/log.jsonl`).
 
 ## Gotchas
 
-- **Dimension weights are never renormalised.** A dimension whose checks are *all*
+- **Harnessability weights are never renormalised.** A dimension whose checks are *all*
   `not_applicable` scores `0` and still contributes `0 × weight` to `total`, so a Go/Rust/Java repo
   really is marked down for `type_safety` (0.25 of the total). This ecosystem-mismatch penalty is
   deliberate — weight redistribution was considered and rejected to keep `payload.total` comparable
   across snapshots — and `lib/harnessability/missing-signal.test.js` pins it. Changing the math
-  needs its own PR and version bump.
+  needs its own PR and version bump. The **effectiveness** scorer
+  (`lib/dashboard/effectiveness.js`) does the opposite on purpose: it redistributes a missing
+  dimension's weight across the available ones. Two scorers, two rules — don't unify them.
 - **`null` ≠ missing signal.** A metric is `null` when its own source is absent, insufficient, or
   uncomputable. `missing_signal_ratio` = sources with no/invalid data ÷ 15; 0 means full
   observability, 1.0 means diagnostics have degraded to legacy fallback mode.
@@ -120,7 +133,9 @@ node scripts/validate-codex-release-candidate.js --candidate-root "$PWD"
 ## Release
 
 Releases follow the deep-suite repo's `CLAUDE.md` §Release workflow (`npm run release:bump`) as the
-single source — never hand-edit marketplace manifests or suite READMEs. This repo owns only its
+single source — never hand-edit marketplace manifests or suite READMEs. The one exception:
+`release:bump` does not write the suite's `.agents/plugins/marketplace.json` mirror, which stays
+manually synced. This repo owns only its
 `CHANGELOG.md` entry and the version bump in `.claude-plugin/plugin.json`,
 `.codex-plugin/plugin.json`, and `package.json` (`npm run check:version-sync`).
 Suite marketplace: <https://github.com/Sungmin-Cho/claude-deep-suite>.
