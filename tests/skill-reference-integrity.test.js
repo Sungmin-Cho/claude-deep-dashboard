@@ -186,6 +186,23 @@ const ANY_ROOT = String.raw`(?:(?:${ANCHOR})${SEP}|${REL}|(?:${PLUGIN_DIRS})${SE
 // Each pattern captures the path token in group 1, so anchoring and containment
 // are judged per token rather than per line — a line mixing an anchored and a
 // bare path must still fail on the bare one.
+// Extensions are asked of the shipped index, not listed. The listed version missed
+// what the plugin actually ships: deep-wiki ships a `.py`, and all three ship a
+// `.yml` that no list held. A new file type added tomorrow joins these sets by
+// existing, which is the point.
+const SHIPPED_EXTS = [...new Set([...PLUGIN_FILES]
+  .map((k) => (k.match(/\.([A-Za-z0-9]+)$/) || [])[1]).filter(Boolean))].sort();
+// For "is this token an instruction to RUN something", the list is INVERTED. Naming
+// the executable extensions is fail-open — the extension nobody thought of is
+// silently inert. Naming the inert ones is fail-closed: an unfamiliar extension is
+// treated as runnable and gets flagged, and the cost of being wrong is a review
+// conversation instead of a miss.
+const INERT_EXTS = new Set(['md', 'json', 'jsonl', 'yaml', 'yml', 'txt', 'lock',
+  'png', 'svg', 'gif', 'ico', 'csv', 'gitkeep', 'gitignore', 'gitattributes']);
+const EXEC_EXTS = SHIPPED_EXTS.filter((e) => !INERT_EXTS.has(e));
+const RESOLVABLE_EXT = SHIPPED_EXTS.join('|');
+const EXECUTABLE_EXT = EXEC_EXTS.join('|');
+
 const FORMS = [
   // 1. interpreter exec: `node X`, `bash X`, `sh X`, `python X`
   ['interpreter-exec', new RegExp(String.raw`\b(?:bash|sh|zsh|node|python3?)\s+["'\`]?(${ANY_ROOT}${PATH_BODY})`, 'g')],
@@ -197,7 +214,7 @@ const FORMS = [
   // 4. executable path token anywhere
   //    The trailing boundary matters: without it `.js` matches the prefix of
   //    `plugin.json` and the guard reports a file that does not exist.
-  ['executable-token', new RegExp(String.raw`(?<![A-Za-z0-9._/\\{}<>$-])((?:${ANCHOR})${SEP}|${REL}|(?:${PLUGIN_DIRS})${SEP})([A-Za-z0-9._/\\-]*\.(?:js|sh|mjs|cjs)(?![A-Za-z0-9]))`, 'g')],
+  ['executable-token', new RegExp(String.raw`(?<![A-Za-z0-9._/\\{}<>$-])((?:${ANCHOR})${SEP}|${REL}|(?:${PLUGIN_DIRS})${SEP})([A-Za-z0-9._/\\-]*\.(?:${EXECUTABLE_EXT})(?![A-Za-z0-9]))`, 'g')],
 ];
 
 // NON-SHIPPED PATHS.
@@ -390,7 +407,7 @@ const JS_MODULE_LOAD = /(?:\brequire\s*\(|\bimport\s*\(|\bimport\b[^;\n]*?\bfrom
 
 // A root that some runtime would have to expand, or an agent substitute, for the
 // specifier to mean anything. Shared with the anchor-spelling rule below.
-const VARIABLE_ROOT = /\$\{?[A-Za-z_][A-Za-z0-9_]*\}?[\\/]/;
+const VARIABLE_ROOT = /\$\{?[A-Za-z_][A-Za-z0-9_]*\}?[\\/]|%[A-Za-z_][A-Za-z0-9_]*%[\\/]/;
 // The same question asked of a whole specifier: is its ROOT a thing something
 // would have to expand? Either spelling — a shell variable or an angle-bracket
 // placeholder — is inert inside a JS string, which is exactly the defect.
@@ -976,7 +993,7 @@ test('the workspace-output split is derived from the convention, and is two-way'
 // `**docs/X.md**` and `[docs/Y.md](…)` — bold text and link text, both ordinary
 // markdown — slip past a list of space/backtick/quote/paren.
 const MAINTAINER_PATH = new RegExp(
-  String.raw`(?<![A-Za-z0-9._\\/-])((?:${MAINTAINER_ONLY_DIRS.map(escapeRe).join('|')})[\\/][A-Za-z0-9._\\/-]+)`, 'g');
+  String.raw`(?<![A-Za-z0-9._\\/-])(?:\.[\\/])?((?:${MAINTAINER_ONLY_DIRS.map(escapeRe).join('|')})[\\/][A-Za-z0-9._\\/-]+)`, 'g');
 
 function undeclaredMaintainerPaths(files = markdownFiles(), read = readFileSync) {
   const violations = [];
@@ -1184,6 +1201,9 @@ test('the anchor cannot be spelled as a shell variable anywhere', () => {
     'the bare `$VAR` spelling counts as much as the braced one');
   assert.ok(VARIABLE_ROOT.test('realpath($SOME_FUTURE_ROOT/skills/x/SKILL.md)'),
     'a variable nobody listed must count too — that is the point of asking structurally');
+  assert.ok(VARIABLE_ROOT.test('node "%CLAUDE_PLUGIN_ROOT%\\lib\\suite-collector.js"'),
+    'and the cmd.exe spelling — the SKILL.md fallback blocks carry a PowerShell arm, '
+    + 'so a Windows reader is exactly who meets these lines');
   // Negatives: the shapes this repo legitimately writes must stay clean, or the
   // rule would ban the target-root argument and the wiki configuration variable.
   for (const clean of [
@@ -1405,7 +1425,7 @@ test('an anchored path that leaves the root through a symlink is rejected', (t) 
 const REFERENCE_PATTERNS = [
   // Trailing boundary, same reason as the guard: without it `.js` matches the
   // prefix of `.json` and the resolver reports files that never existed.
-  [new RegExp(String.raw`${ANCHOR}[\\/]([A-Za-z0-9._\\/-]+\.(?:md|js|sh|json|yaml)(?![A-Za-z0-9]))`, 'g'), false],
+  [new RegExp(String.raw`${ANCHOR}[\\/]([A-Za-z0-9._\\/-]+\.(?:${RESOLVABLE_EXT})(?![A-Za-z0-9]))`, 'g'), false],
   [/`(\.\.[\\/][A-Za-z0-9._\\/-]+\.md)(?:#[a-z0-9-]+)?`/g, true],
   [/\]\((\.\.?[\\/][A-Za-z0-9._\\/-]+\.md)\)/g, true],
 ];
