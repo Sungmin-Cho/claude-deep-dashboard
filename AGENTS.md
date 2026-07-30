@@ -6,10 +6,15 @@ envelopes and emits its own (`harnessability-report`) for deep-work Phase 1 Rese
 on Windows/macOS/Linux, ESM, zero runtime deps — nothing outside `devDependencies`, test runner
 is built-in `node --test`.
 
-Manifests: `.claude-plugin/plugin.json` (Claude Code) + `.codex-plugin/plugin.json` (Codex);
-skills in `skills/`, diagnostics in `lib/`, CLIs in `scripts/`. Version:
-`jq -r .version .claude-plugin/plugin.json`; history in [`CHANGELOG.md`](CHANGELOG.md); doc rules
-in `docs/DOCS_RULE.md` (local-only, gitignored).
+Manifests: `<plugin-root>/.claude-plugin/plugin.json` (Claude Code) +
+`<plugin-root>/.codex-plugin/plugin.json` (Codex); skills in `skills/`, diagnostics in `lib/`, CLIs
+in `scripts/`. Version: `jq -r .version <plugin-root>/.claude-plugin/plugin.json`; history in
+[`CHANGELOG.md`](CHANGELOG.md).
+
+> 📄 Doc maintenance follows `docs/DOCS_RULE.md` — a maintainer rulebook that is gitignored and
+> ships with nothing. It exists only in a maintainer's own checkout; never try to open it at
+> runtime, because the only place that path can resolve in an installed plugin is the project
+> being analysed.
 
 ## Surfaces
 
@@ -27,14 +32,15 @@ repo, unless it is an intentional fixture.
 
 ## Contracts live in code — read the file, don't restate it
 
-- `lib/suite-constants.js` — `EXPECTED_SOURCES` (15), `PAYLOAD_REQUIRED_FIELDS`,
+- `<plugin-root>/lib/suite-constants.js` — `EXPECTED_SOURCES` (15), `PAYLOAD_REQUIRED_FIELDS`,
   `PAYLOAD_SCHEMA_MAJOR`, `ENVELOPE_ROLLOUT`, `ADOPTION_LEDGER` (per-plugin adoption dates).
-- `lib/metrics-catalog.yaml` — authoritative spec for all 17 suite metrics.
-- `lib/harnessability/checklist.json` — dimension ids, weights, the 17 checks.
-- `lib/test-catalog-manifest.json` — mirror of suite `docs/test-catalog.md` §1–§8;
-  `check:catalog-drift` fails on desync.
-- `test/fixtures/handoff-roundtrip/` — byte-identical mirror of suite §9; re-copy on suite update
-  before release. `lib/e2e-suite-roundtrip.test.js` asserts the M5 metric values from it.
+- `<plugin-root>/lib/metrics-catalog.yaml` — authoritative spec for all 17 suite metrics.
+- `<plugin-root>/lib/harnessability/checklist.json` — dimension ids, weights, the 17 checks.
+- `<plugin-root>/lib/test-catalog-manifest.json` — mirror of §1–§8 of the test catalog kept in the
+  claude-deep-suite registry repo; `check:catalog-drift` fails on desync.
+- `<plugin-root>/test/fixtures/handoff-roundtrip/` — byte-identical mirror of suite §9; re-copy on
+  suite update before release. `<plugin-root>/lib/e2e-suite-roundtrip.test.js` asserts the M5
+  metric values from it.
 
 ## `harnessability-report` — own emission
 
@@ -50,7 +56,7 @@ dimension's score.
 
 **Freshness — this plugin only**: fresh for 24 h after `envelope.generated_at`; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
-`DAY_MS` in `scripts/dashboard-cli.js`, and governs the legacy-mode preflight; its prose sites are
+`DAY_MS` in `<plugin-root>/scripts/dashboard-cli.js`, and governs the legacy-mode preflight; its prose sites are
 both `skills/*/SKILL.md` and this file — change them together. It binds no other plugin: deep-work
 Phase 1 Research reads the report read-only and skips one older than **7 days** by its own policy
 (deep-work `skills/deep-research/SKILL.md` §Cross-Plugin Context).
@@ -59,7 +65,8 @@ Phase 1 Research reads the report read-only and skips one older than **7 days** 
 
 The two readers are deliberately not equally strict (the duplication is intentional — see Gotchas).
 
-**Suite collector** — `unwrapStrict` in `lib/suite-collector.js` unwraps only when **all** hold:
+**Suite collector** — `unwrapStrict` in `<plugin-root>/lib/suite-collector.js` unwraps only when
+**all** hold:
 
 - `schema_version === "1.0"`, strict string (legacy deep-docs v1.1.0 emitted numeric `2`)
 - `envelope` is a non-null object, not an array (`typeof [] === "object"`)
@@ -77,7 +84,7 @@ source with no accepted envelope; an NDJSON log missing, errored, or empty). The
 independently: one accepted envelope beside three rejected ones is 3 schema failures and 0 missing
 signal, while an absent `last-scan.json` is 1/15 missing signal and 0 failures.
 
-**Legacy collector** — `unwrapEnvelope` in `lib/dashboard/collector.js` **passes anything not
+**Legacy collector** — `unwrapEnvelope` in `<plugin-root>/lib/dashboard/collector.js` **passes anything not
 envelope-shaped (including `null`) through unchanged**, so pre-envelope artifacts keep working, and
 it applies **no required-field check**. Envelope-shaped input still gets the identity, schema-MAJOR,
 and payload-object guards; violating any of them returns `null` **plus a `console.warn` on stderr**.
@@ -100,9 +107,9 @@ exactly that set: 12 envelopes (deep-work
   `not_applicable` scores `0` and still contributes `0 × weight` to `total`, so a Go/Rust/Java repo
   really is marked down for `type_safety` (0.25 of the total). This ecosystem-mismatch penalty is
   deliberate — weight redistribution was considered and rejected to keep `payload.total` comparable
-  across snapshots — and `lib/harnessability/missing-signal.test.js` pins it. Changing the math
-  needs its own PR and version bump. The **effectiveness** scorer
-  (`lib/dashboard/effectiveness.js`) does the opposite on purpose: it redistributes a missing
+  across snapshots — and `<plugin-root>/lib/harnessability/missing-signal.test.js` pins it. Changing
+  the math needs its own PR and version bump. The **effectiveness** scorer
+  (`<plugin-root>/lib/dashboard/effectiveness.js`) does the opposite on purpose: it redistributes a missing
   dimension's weight across the available ones. Two scorers, two rules — don't unify them.
 - **`null` ≠ missing signal.** A metric is `null` when its own source is absent, insufficient, or
   uncomputable. `missing_signal_ratio` = sources with no/invalid data ÷ 15; 0 means full
@@ -119,10 +126,11 @@ exactly that set: 12 envelopes (deep-work
   equals the handoff's `payload.to.producer` — a reverse handoff, a plain receipt, whatever B emits.
   Two consequences: a handoff carrying no `payload.to.producer` can **never** be closed and sits in
   the denominator forever, and a child emitted by the *sender* never counts. Multi-ack, the
-  missing-receiver case, and unrelated-child filtering are pinned in `lib/aggregator.test.js`;
-  `lib/e2e-suite-roundtrip.test.js` covers the closed- and broken-chain cases only.
+  missing-receiver case, and unrelated-child filtering are pinned in
+  `<plugin-root>/lib/aggregator.test.js`; `<plugin-root>/lib/e2e-suite-roundtrip.test.js` covers the
+  closed- and broken-chain cases only.
 - **Legacy-fallback cutoff `2026-11-07`, exclusive** — but the switch is **not wired up**.
-  `legacyFallbackExpired()` exists in `lib/suite-constants.js` and is unit-tested, and no emit path
+  `legacyFallbackExpired()` exists in `<plugin-root>/lib/suite-constants.js` and is unit-tested, and no emit path
   calls it, so no `legacy_fallback_warning` is produced today, before or after the cutoff. Treat the
   cutoff as a planned behaviour, not a current one.
 - **The wiki `log.jsonl` is not a hook log.** `suite.hooks.block_rate` and `error_rate` skip every
@@ -130,22 +138,23 @@ exactly that set: 12 envelopes (deep-work
   well-formed hook event inside it could never be counted. Hook metrics therefore span exactly the
   two hook logs (deep-work, deep-evolve); the wiki log feeds wiki metrics only. Blocking keys on
   `event ∈ { hook-block, hook-deny }`; malformed lines are skipped, never fatal.
-- **The scorer resolves its own root literally**: `lib/harnessability/scorer.js` reads
+- **The scorer resolves its own root literally**: `<plugin-root>/lib/harnessability/scorer.js` reads
   `producer_version` from `../../.claude-plugin/plugin.json` resolved against its own module path,
-  never from the caller's cwd — a consumer project may hold an unrelated `.claude-plugin/plugin.json`.
-  Git-state detection uses the `projectRoot` parameter, also never cwd.
-- **The duplicated envelope-unwrap helpers** in `lib/dashboard/collector.js` and
-  `lib/suite-collector.js` are intentional (PR 1 scope boundary; consolidation deferred to M5).
+  never from the caller's cwd — a consumer project may hold an unrelated Claude plugin manifest of
+  its own. Git-state detection uses the `projectRoot` parameter, also never cwd.
+- **The duplicated envelope-unwrap helpers** in `<plugin-root>/lib/dashboard/collector.js` and
+  `<plugin-root>/lib/suite-collector.js` are intentional (PR 1 scope boundary; consolidation
+  deferred to M5).
 
 ## Verification
 
 ```bash
 npm test                    # node --test "lib/**/*.test.js" "tests/**/*.test.js"
 npm run validate:envelope   # producer_version + identity triple + payload shape
-npm run check:catalog-drift # lib/test-catalog-manifest.json vs suite docs/test-catalog.md
+npm run check:catalog-drift # <plugin-root>/lib/test-catalog-manifest.json vs the suite test catalog
 npm run check:version-sync  # plugin.json.version === package.json.version
-node -e "JSON.parse(require('fs').readFileSync('.codex-plugin/plugin.json','utf8'))"
-node scripts/validate-codex-release-candidate.js --candidate-root "$PWD"
+node -e "JSON.parse(require('fs').readFileSync('<plugin-root>/.codex-plugin/plugin.json','utf8'))"
+node "<plugin-root>/scripts/validate-codex-release-candidate.js" --candidate-root "$PWD"
 ```
 
 ## Release
@@ -154,6 +163,6 @@ Releases follow the deep-suite repo's `CLAUDE.md` §Release workflow (`npm run r
 single source — never hand-edit marketplace manifests or suite READMEs. The one exception:
 `release:bump` does not write the suite's `.agents/plugins/marketplace.json` mirror, which stays
 manually synced. This repo owns only its
-`CHANGELOG.md` entry and the version bump in `.claude-plugin/plugin.json`,
-`.codex-plugin/plugin.json`, and `package.json` (`npm run check:version-sync`).
+`CHANGELOG.md` entry and the version bump in `<plugin-root>/.claude-plugin/plugin.json`,
+`<plugin-root>/.codex-plugin/plugin.json`, and `package.json` (`npm run check:version-sync`).
 Suite marketplace: <https://github.com/Sungmin-Cho/claude-deep-suite>.

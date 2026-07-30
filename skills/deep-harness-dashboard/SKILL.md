@@ -10,7 +10,7 @@ Two modes over one CLI:
 - **Legacy** (default) — envelope-aware single snapshot: 5 sources, effectiveness score, action
   routing.
 - **Suite** (`--suite`, M4) — accumulates the 17 metrics from 15 sources into an append-only JSONL
-  time series plus a trend report. `lib/metrics-catalog.yaml` owns the metric ids, tiers,
+  time series plus a trend report. `<plugin-root>/lib/metrics-catalog.yaml` owns the metric ids, tiers,
   `null_when` semantics, and the deprecated wire keys.
 
 ## Invocation
@@ -27,17 +27,17 @@ Standalone route:
 ### Loaded-SKILL routing handoff
 
 `pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, where `loadedSkillPath` is this file's
-absolute path as the host passes it — Claude Code derives it from
-`realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harness-dashboard/SKILL.md)`; Codex passes the loaded
+absolute path as the host passes it — Claude Code derives it by `realpath`-resolving this skill file
+under the directory named by `$CLAUDE_PLUGIN_ROOT`; Codex passes the loaded
 `SKILL.md` path itself and defines no `CLAUDE_*` variable. Build the
-`scripts/dashboard-cli.js` path from `pluginRoot`; if `loadedSkillPath` is unavailable, fail with a
+`<plugin-root>/scripts/dashboard-cli.js` path from `pluginRoot`; if `loadedSkillPath` is unavailable, fail with a
 routing error rather than inferring a root. The caller's cwd is neither the plugin root nor an
 implicit target root, so always pass the target as `--project-root`. Prefer absolute Node argv
 through the host execution tool — the commands below are fallback documentation; substitute the
 real absolute root and never execute an argument containing `..`.
 
 ```text
-POSIX dashboard:      node "$CLAUDE_PLUGIN_ROOT/scripts/dashboard-cli.js" --project-root "$PWD"
+POSIX dashboard:      node "<plugin-root>/scripts/dashboard-cli.js" --project-root "$PWD"
 PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --project-root (Get-Location).Path
 ```
 
@@ -51,8 +51,8 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
 2. `collectData(projectRoot)` is **M3 envelope-aware** — it applies the identity guards
    (`<plugin-root>/AGENTS.md` §Reading other plugins' envelopes), passes legacy artifacts through
    unchanged, and resolves identity-mismatched envelopes to `null` as defense-in-depth.
-3. Score with `calculateEffectiveness(data)` from `lib/dashboard/effectiveness.js`, then route
-   findings through `getSuggestedActions(data)` from `lib/dashboard/action-router.js`.
+3. Score with `calculateEffectiveness(data)` from `<plugin-root>/lib/dashboard/effectiveness.js`, then route
+   findings through `getSuggestedActions(data)` from `<plugin-root>/lib/dashboard/action-router.js`.
 4. Build the default view explicitly — harnessability as `{ total, grade }` from
    `data.harnessability.data`, effectiveness as the numeric `.effectiveness` return field, actions
    from the router. That explicit shaping is what prevents `undefined/10` and `[object Object]`.
@@ -62,19 +62,19 @@ PowerShell dashboard: node "C:\absolute\plugin\scripts\dashboard-cli.js" --proje
 
 One ordering constraint: read the previous snapshot **before** appending the new one, or the trend
 baseline becomes the row just written. The sequence below mirrors `runSuite` in
-`scripts/dashboard-cli.js`.
+`<plugin-root>/scripts/dashboard-cli.js`.
 
-1. `collectSuite(projectRoot)` from `lib/suite-collector.js` — the 15 sources below. Honors
+1. `collectSuite(projectRoot)` from `<plugin-root>/lib/suite-collector.js` — the 15 sources below. Honors
    `options.wikiRoot` or `DEEP_WIKI_ROOT` for external wiki vaults.
 2. `readRecentSnapshots(projectRoot, 1)` — its first result is the previous trend baseline (or
    `null`). This is the step that must precede step 4.
-3. `buildSnapshot(collected)` from `lib/aggregator.js` — emits the 17 metrics per
-   `lib/metrics-catalog.yaml`.
+3. `buildSnapshot(collected)` from `<plugin-root>/lib/aggregator.js` — emits the 17 metrics per
+   `<plugin-root>/lib/metrics-catalog.yaml`.
 4. `appendSnapshot(snapshot, projectRoot)` — appends one JSONL line to
    `.deep-dashboard/suite-metrics.jsonl`.
 5. `writeSuiteReportFile(snapshot, previous, projectRoot)` — renders
    `.deep-dashboard/suite-report.md` with trend arrows (↑/↓/→/·/?).
-6. `exportSnapshot(snapshot)` from `lib/otel.js` — always called; without
+6. `exportSnapshot(snapshot)` from `<plugin-root>/lib/otel.js` — always called; without
    `OTEL_EXPORTER_OTLP_ENDPOINT` it returns `{ exported: false, reason: 'no-endpoint' }` and does
    nothing. Export failures are non-fatal and never block rendering.
 
@@ -88,7 +88,7 @@ baseline becomes the row just written. The sequence below mirrors `runSuite` in
 
 `.deep-dashboard/harnessability-report.json` is fresh for **24 hours after
 `envelope.generated_at`**. The threshold is implemented once, as `DAY_MS` in
-`scripts/dashboard-cli.js`, and governs legacy-mode step 1 above; its prose sites are both
+`<plugin-root>/scripts/dashboard-cli.js`, and governs legacy-mode step 1 above; its prose sites are both
 `skills/*/SKILL.md` and `<plugin-root>/AGENTS.md` — change them together. It binds no other plugin:
 deep-work Phase 1 Research reads the report read-only under its own 7-day policy.
 
@@ -135,7 +135,7 @@ subdirs are both read, then merged per (producer, kind). A session subdir named 
 3 NDJSON logs: `(deep-work, hook-log)` `.deep-work/hooks.log.jsonl`, `(deep-evolve, hook-log)`
 `.deep-evolve/hooks.log.jsonl`, `(deep-wiki, log)` `<wiki_root>/log.jsonl`.
 
-These 15 read sources are exactly the 15 `EXPECTED_SOURCES` of `lib/suite-constants.js` that form
+These 15 read sources are exactly the 15 `EXPECTED_SOURCES` of `<plugin-root>/lib/suite-constants.js` that form
 the `missing_signal_ratio` denominator — the two sets must stay in step.
 
 ## Outputs (suite mode)
@@ -144,4 +144,4 @@ the `missing_signal_ratio` denominator — the two sets must stay in step.
   external tooling (dashboards, deep-evolve insight aggregators) may read it.
 - `.deep-dashboard/suite-report.md` — human-facing only, not consumed by other plugins.
 - OTLP collector (when `OTEL_EXPORTER_OTLP_ENDPOINT` is set) — out-of-process observability sink;
-  transport details in `lib/otel.js`.
+  transport details in `<plugin-root>/lib/otel.js`.

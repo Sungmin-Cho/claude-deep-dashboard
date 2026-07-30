@@ -15,8 +15,8 @@ Slash command `/deep-harnessability`, or directly
 ### Loaded-SKILL routing handoff
 
 `pluginRoot = dirname(dirname(dirname(loadedSkillPath)))`, where `loadedSkillPath` is this file's
-absolute path as the host passes it — Claude Code derives it from
-`realpath($CLAUDE_PLUGIN_ROOT/skills/deep-harnessability/SKILL.md)`; Codex passes the loaded
+absolute path as the host passes it — Claude Code derives it by `realpath`-resolving this skill file
+under the directory named by `$CLAUDE_PLUGIN_ROOT`; Codex passes the loaded
 `SKILL.md` path itself and defines no `CLAUDE_*` variable. Build the scorer path from `pluginRoot`;
 if `loadedSkillPath` is unavailable, fail with a routing error rather than inferring a root. The
 caller's cwd is neither the plugin root nor an implicit target root, so always pass the target as
@@ -25,11 +25,12 @@ are fallback documentation; substitute the real absolute root and never execute 
 containing `..`.
 
 ```text
-POSIX scorer:      node "$CLAUDE_PLUGIN_ROOT/lib/harnessability/scorer.js" --project-root "$PWD"
+POSIX scorer:      node "<plugin-root>/lib/harnessability/scorer.js" --project-root "$PWD"
 PowerShell scorer: node "C:\absolute\plugin\lib\harnessability\scorer.js" --project-root (Get-Location).Path
 ```
 
-The scorer never defaults to `process.cwd()`. One positional root (`node scorer.js PATH`) stays a
+The scorer never defaults to `process.cwd()`. One positional root
+(`node "<plugin-root>/lib/harnessability/scorer.js" PATH`) stays a
 compatibility form; a missing root, duplicate flags, extra positionals, or a positional root
 combined with `--project-root` are usage errors.
 
@@ -37,7 +38,7 @@ combined with `--project-root` are usage errors.
 
 1. Run the scorer:
    ```bash
-   node "<absolute-plugin-root>/lib/harnessability/scorer.js" --project-root "<absolute-target-project-root>"
+   node "<plugin-root>/lib/harnessability/scorer.js" --project-root "<absolute-target-project-root>"
    ```
    It prints the M3 envelope on stdout and writes the same envelope to
    `.deep-dashboard/harnessability-report.json`.
@@ -59,7 +60,7 @@ combined with `--project-root` are usage errors.
 
 3. If any dimension in `payload.dimensions[]` scores **below 5**, present the top 3 entries from
    `payload.recommendations[]` with estimated impact. 5 is the scorer's recommendation-emit
-   boundary (`lib/harnessability/scorer.js`); `payload.recommendations[]` is one flat array to
+   boundary (`<plugin-root>/lib/harnessability/scorer.js`); `payload.recommendations[]` is one flat array to
    which only sub-5 dimensions contribute.
 
 4. If `payload.topology_hints` is non-null, render each string as a suggestion.
@@ -70,7 +71,8 @@ combined with `--project-root` are usage errors.
 ## Output file
 
 `.deep-dashboard/harnessability-report.json` is a deep-suite M3 cross-plugin envelope
-(claude-deep-suite `docs/envelope-migration.md` §1): top-level `schema_version: "1.0"` + `envelope`
+(§1 of the envelope migration guide kept in the claude-deep-suite registry repo, not in this
+plugin): top-level `schema_version: "1.0"` + `envelope`
 (producer, run_id ULID, git, provenance) + `payload`, whose required fields are exactly
 `projectRoot`, `total`, `grade`, `dimensions`, `recommendations`.
 Identity, all four exact — these are what downstream identity guards check:
@@ -84,14 +86,14 @@ Identity, all four exact — these are what downstream identity guards check:
 
 The report is fresh for **24 hours after `envelope.generated_at`**; missing, malformed,
 identity-mismatched, future-dated, or ≥ 24 h → recompute. The threshold is implemented once, as
-`DAY_MS` in `scripts/dashboard-cli.js`; its prose sites are both `skills/*/SKILL.md` and
+`DAY_MS` in `<plugin-root>/scripts/dashboard-cli.js`; its prose sites are both `skills/*/SKILL.md` and
 `<plugin-root>/AGENTS.md` — change them together. It governs this plugin's own reuse only; other
 plugins set their own policy.
 
 ## Consumed by
 
 - **deep-harness-dashboard** legacy mode step 1 — applies the 24 h rule above through the dashboard
-  CLI's freshness preflight, re-running the scorer before `lib/dashboard/collector.js` reads the
+  CLI's freshness preflight, re-running the scorer before `<plugin-root>/lib/dashboard/collector.js` reads the
   envelope. Aggregator-pattern producer: it writes only the target project's refreshed report.
 - **deep-work** Phase 1 Research — reads the report **read-only** when it exists and skips one
   older than **7 days** (its own policy, not the 24 h threshold above). It never re-runs the
