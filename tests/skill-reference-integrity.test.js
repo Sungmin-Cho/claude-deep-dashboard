@@ -520,11 +520,11 @@ function shadowableTokens(line, sourceFile = join(ROOT, 'AGENTS.md'), root = ROO
 // Indented too: fences nested in a list item or a numbered step are still fences.
 const FENCE = /^[ \t]*```/gm;
 
-function unbalancedFences(files = markdownFiles(), read = readFileSync) {
+function unbalancedFences(files = markdownFiles(), read = readFileSync, rel = relative) {
   const out = [];
   for (const file of files) {
     const fences = (read(file, 'utf8').match(FENCE) || []).length;
-    if (fences % 2 !== 0) out.push(`${relative(ROOT, file)} (${fences})`);
+    if (fences % 2 !== 0) out.push(`${normalizePath(rel(ROOT, file))} (${fences})`);
   }
   return out;
 }
@@ -537,6 +537,14 @@ test('every skill and always-loaded markdown file has balanced code fences', () 
   const fake = join(ROOT, 'skills', 'fixture.md');
   assert.deepEqual(unbalancedFences([fake], () => '```bash\ncode\n'),
     ['skills/fixture.md (1)'], 'an unclosed fence must be reported');
+  // The report string, not just the lookup key. This guard already emulates Windows
+  // for the SCAN-SET keys, and that coverage read as if it covered everything — but
+  // the fixture-driven assertions compared `relative()`'s raw output against a
+  // forward-slash literal, so every one of them failed on Windows CI and on no
+  // developer's machine. `rel` is a seam, not a switch: it defaults to the host's.
+  assert.deepEqual(unbalancedFences([fake], () => '```bash\ncode\n', win32.relative),
+    ['skills/fixture.md (1)'],
+    'a finding must read the same on every host, or the guard reports two spellings');
   // Indented, and deliberately ODD. A balanced indented pair is a decorative
   // probe: a column-0-only matcher counts zero fences there, which is also even,
   // so the assertion passes under the very mutation it claims to catch
@@ -583,7 +591,7 @@ test('every skill and always-loaded markdown file has balanced code fences', () 
 
   const truncated = [];
   for (const file of markdownFiles()) {
-    if (openAtEof(readFileSync(file, 'utf8'))) truncated.push(relative(ROOT, file));
+    if (openAtEof(readFileSync(file, 'utf8'))) truncated.push(normalizePath(relative(ROOT, file)));
   }
   assert.deepEqual(truncated, [],
     'a code fence is still open at end of file — the rest of the document renders as '
@@ -638,7 +646,7 @@ test('no read or exec instruction can be shadowed from the target workspace', ()
   for (const file of markdownFiles()) {
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
       for (const v of shadowableTokens(line, file)) {
-        violations.push(`${relative(ROOT, file)}:${i + 1}  [${v.form}] ${v.token} — ${v.why}`);
+        violations.push(`${normalizePath(relative(ROOT, file))}:${i + 1}  [${v.form}] ${v.token} — ${v.why}`);
       }
     });
   }
@@ -823,7 +831,7 @@ test('a malicious workspace cannot shadow any instruction the plugin issues', ()
           // prose that names a shipped directory — `lib/dashboard`, say — where
           // nothing shadowable was planted at all.
           if (target.startsWith(evil + sep) && existsSync(target) && statSync(target).isFile()) {
-            landed.push(`${relative(ROOT, file)}:${i + 1}  ${token} → ${target}`);
+            landed.push(`${normalizePath(relative(ROOT, file))}:${i + 1}  ${token} → ${target}`);
           }
         }
       });
@@ -856,7 +864,7 @@ function unexpandedLinkDestinations(files = markdownFiles(), read = readFileSync
       UNEXPANDED_LINK.lastIndex = 0;
       let m;
       while ((m = UNEXPANDED_LINK.exec(line))) {
-        broken.push(`${relative(ROOT, file)}:${i + 1}  ](${m[1]})`);
+        broken.push(`${normalizePath(relative(ROOT, file))}:${i + 1}  ](${m[1]})`);
       }
     });
   }
@@ -906,7 +914,7 @@ test('a path the plugin never ships carries the sentence that makes it safe', ()
       const flat = flatten(body);
       for (const clause of clauses) {
         if (!clause.test(flat)) {
-          violations.push(`${relative(ROOT, file)} names ${token} but is missing: ${clause.source}`);
+          violations.push(`${normalizePath(relative(ROOT, file))} names ${token} but is missing: ${clause.source}`);
         }
       }
     }
@@ -1059,7 +1067,7 @@ function undeclaredMaintainerPaths(files = markdownFiles(), read = readFileSync)
         // other plugin path. `docs/monitor-decision.md` is the live case, and it
         // exists only because this repo writes `docs/*` with a `!` re-include.
         if (PLUGIN_FILES.has(token)) continue;
-        violations.push(`${relative(ROOT, file)}:${i + 1}  ${m[1]}`);
+        violations.push(`${normalizePath(relative(ROOT, file))}:${i + 1}  ${m[1]}`);
       }
     });
   }
@@ -1230,7 +1238,7 @@ function variableRootOffenders(files = markdownFiles(), read = readFileSync) {
   for (const file of files) {
     read(file, 'utf8').split('\n').forEach((line, i) => {
       if (VARIABLE_ROOT.test(line)) {
-        offenders.push(`${relative(ROOT, file)}:${i + 1}  ${line.trim()}`);
+        offenders.push(`${normalizePath(relative(ROOT, file))}:${i + 1}  ${line.trim()}`);
       }
     });
   }
@@ -1311,7 +1319,7 @@ function pluginRootSpellings(files = markdownFiles(), read = readFileSync) {
       while ((m = PLACEHOLDER_ROOT.exec(line))) {
         if (!resolvesInPlugin(normalizePath(m[2]), file)) continue;
         if (!found.has(m[1])) found.set(m[1], []);
-        found.get(m[1]).push(`${relative(ROOT, file)}:${i + 1}  <${m[1]}>/${m[2]}`);
+        found.get(m[1]).push(`${normalizePath(relative(ROOT, file))}:${i + 1}  <${m[1]}>/${m[2]}`);
       }
     });
   }
@@ -1498,7 +1506,7 @@ function brokenReferences(files = markdownFiles(), read = readFileSync, root = R
           ? resolve(dirname(file), normalizePath(m[1]))
           : join(root, normalizePath(m[1]));
         if (!existsSync(target)) {
-          broken.push(`${relative(root, file)} -> ${m[1]} (missing)`);
+          broken.push(`${normalizePath(relative(root, file))} -> ${m[1]} (missing)`);
           continue;
         }
         // Existing is not enough: a target that resolves outside the plugin root
@@ -1507,7 +1515,7 @@ function brokenReferences(files = markdownFiles(), read = readFileSync, root = R
         // and the classifier cannot disagree about what counts as in-root.
         const real = realpathSync(target);
         if (real !== realRoot && !real.startsWith(realRoot + sep)) {
-          broken.push(`${relative(root, file)} -> ${m[1]} (resolves outside the plugin root: ${real})`);
+          broken.push(`${normalizePath(relative(root, file))} -> ${m[1]} (resolves outside the plugin root: ${real})`);
           continue;
         }
         resolved += 1;
