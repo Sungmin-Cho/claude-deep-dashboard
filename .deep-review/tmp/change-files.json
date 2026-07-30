@@ -1,0 +1,13 @@
+{"status":"M","path":".claude-plugin/plugin.json"}
+{"status":"M","path":".codex-plugin/plugin.json"}
+{"status":"M","path":"AGENTS.md"}
+{"status":"M","path":"CHANGELOG.ko.md"}
+{"status":"M","path":"CHANGELOG.md"}
+{"status":"M","path":"CLAUDE.md"}
+{"status":"M","path":"package.json"}
+{"status":"M","path":"scripts/validate-codex-release-candidate.js"}
+{"status":"M","path":"skills/deep-harness-dashboard/SKILL.md"}
+{"status":"M","path":"skills/deep-harnessability/SKILL.md"}
+{"status":"M","path":"tests/codex-release-candidate.test.js"}
+{"status":"M","path":"tests/fixtures/sample-harnessability-report.json"}
+{"status":"M","path":"tests/plugin-contract.test.js"}

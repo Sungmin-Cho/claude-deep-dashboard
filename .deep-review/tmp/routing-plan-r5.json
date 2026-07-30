@@ -1,0 +1,645 @@
+{
+  "protocol_version": "3.0",
+  "codex_only": false,
+  "routing_policy": "auto",
+  "reviewer_strategy": "adaptive",
+  "shadow_mode": false,
+  "artifact_phase": "implementation",
+  "risk": "low",
+  "size": "tiny",
+  "progress": "initial",
+  "candidate_reviewers": [
+    {
+      "reviewer_id": "claude-opus",
+      "provider": "claude",
+      "adapter_id": "claude-native-agent",
+      "assignment_roles": [
+        "adversarial",
+        "confirmation",
+        "feasibility",
+        "security",
+        "standard",
+        "traceability"
+      ],
+      "last_status": "unknown"
+    },
+    {
+      "reviewer_id": "codex-review",
+      "provider": "codex",
+      "adapter_id": "codex-exec",
+      "assignment_roles": [
+        "adversarial",
+        "confirmation",
+        "feasibility",
+        "security",
+        "standard",
+        "traceability"
+      ],
+      "last_status": "unknown"
+    },
+    {
+      "reviewer_id": "codex-adversarial",
+      "provider": "codex",
+      "adapter_id": "codex-exec",
+      "assignment_roles": [
+        "adversarial",
+        "confirmation",
+        "feasibility",
+        "security",
+        "standard",
+        "traceability"
+      ],
+      "last_status": "unknown",
+      "expansion_route_templates": [
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "adversarial",
+          "rubric_id": "adversarial-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/adversarial -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "confirmation",
+          "rubric_id": "confirmation-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/confirmation -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "feasibility",
+          "rubric_id": "feasibility-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/feasibility -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "security",
+          "rubric_id": "security-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/security -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "standard",
+          "rubric_id": "standard-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/standard -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "codex-adversarial",
+          "provider": "codex",
+          "adapter_id": "codex-exec",
+          "assignment_role": "traceability",
+          "rubric_id": "traceability-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "flag:--model",
+            "effort": "config:model_reasoning_effort"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": "high"
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": false,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": null,
+            "reason": null
+          },
+          "route_explanation": "unknown/low/tiny/traceability -> quality/high; reviewer plan: generic standard"
+        }
+      ]
+    },
+    {
+      "reviewer_id": "agy",
+      "provider": "agy",
+      "adapter_id": "agy-cli",
+      "assignment_roles": [
+        "adversarial",
+        "confirmation",
+        "feasibility",
+        "security",
+        "standard",
+        "traceability"
+      ],
+      "last_status": "unknown",
+      "expansion_route_templates": [
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "adversarial",
+          "rubric_id": "adversarial-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/adversarial -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "confirmation",
+          "rubric_id": "confirmation-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/confirmation -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "feasibility",
+          "rubric_id": "feasibility-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/feasibility -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "security",
+          "rubric_id": "security-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/security -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "standard",
+          "rubric_id": "standard-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/standard -> quality/high; reviewer plan: generic standard"
+        },
+        {
+          "protocol_version": "3.0",
+          "reviewer_id": "agy",
+          "provider": "agy",
+          "adapter_id": "agy-cli",
+          "assignment_role": "traceability",
+          "rubric_id": "traceability-v1",
+          "wave": 2,
+          "required": false,
+          "selection_reason": "same-round expansion route template",
+          "transports": {
+            "model": "config:agy_model",
+            "effort": "none"
+          },
+          "requested": {
+            "model_tier": "quality",
+            "model": null,
+            "effort": "high",
+            "source": "auto",
+            "model_source": "provider-default",
+            "effort_source": "auto"
+          },
+          "resolved": {
+            "model": null,
+            "effort": null
+          },
+          "fallback": {
+            "allowed": false,
+            "occurred": true,
+            "requested": {
+              "model": null,
+              "effort": "high"
+            },
+            "applied": {
+              "model": null,
+              "effort": null
+            },
+            "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+          },
+          "route_explanation": "unknown/low/tiny/traceability -> quality/high; reviewer plan: generic standard"
+        }
+      ]
+    }
+  ],
+  "minimum_reviewers": 2,
+  "maximum_reviewers": 4,
+  "provider_family_minimum": 2,
+  "planned_reviewers": 2,
+  "initial_reviewer_ids": [
+    "claude-opus",
+    "codex-review"
+  ],
+  "required_reviewer_ids": [
+    "claude-opus"
+  ],
+  "shortfalls": [],
+  "confidence_floor": null,
+  "operational_failure": false,
+  "max_expansion_waves": 1,
+  "routes": [
+    {
+      "protocol_version": "3.0",
+      "reviewer_id": "claude-opus",
+      "provider": "claude",
+      "adapter_id": "claude-native-agent",
+      "assignment_role": "standard",
+      "rubric_id": "standard-v1",
+      "wave": 1,
+      "required": true,
+      "selection_reason": "explicit reviewer override requires this canonical reviewer",
+      "transports": {
+        "model": "agent-parameter",
+        "effort": "none"
+      },
+      "requested": {
+        "model_tier": "balanced",
+        "model": "opus",
+        "effort": "medium",
+        "source": "cli-reviewer",
+        "model_source": "cli-reviewer",
+        "effort_source": "auto"
+      },
+      "resolved": {
+        "model": "opus",
+        "effort": null
+      },
+      "fallback": {
+        "allowed": false,
+        "occurred": true,
+        "requested": {
+          "model": "opus",
+          "effort": "medium"
+        },
+        "applied": {
+          "model": "opus",
+          "effort": null
+        },
+        "reason": "automatic effort omitted because adapter transport is unsupported or unknown"
+      },
+      "route_explanation": "unknown/low/tiny/standard -> balanced/medium; reviewer plan: generic standard"
+    },
+    {
+      "protocol_version": "3.0",
+      "reviewer_id": "codex-review",
+      "provider": "codex",
+      "adapter_id": "codex-exec",
+      "assignment_role": "adversarial",
+      "rubric_id": "adversarial-v1",
+      "wave": 1,
+      "required": false,
+      "selection_reason": "role fit adversarial; provider diversity; prior-round freshness; last success; canonical id",
+      "transports": {
+        "model": "flag:--model",
+        "effort": "config:model_reasoning_effort"
+      },
+      "requested": {
+        "model_tier": "balanced",
+        "model": null,
+        "effort": "medium",
+        "source": "auto",
+        "model_source": "provider-default",
+        "effort_source": "auto"
+      },
+      "resolved": {
+        "model": null,
+        "effort": "medium"
+      },
+      "fallback": {
+        "allowed": false,
+        "occurred": false,
+        "requested": {
+          "model": null,
+          "effort": "medium"
+        },
+        "applied": null,
+        "reason": null
+      },
+      "route_explanation": "unknown/low/tiny/adversarial -> balanced/medium; reviewer plan: generic standard"
+    }
+  ],
+  "explicit_overrides": true,
+  "apply_automatic": true
+}

@@ -81,15 +81,22 @@ prerequisites:
    `missing_signal_ratio` deviates more than 2σ from the trailing-30-snapshot
    mean.
 
-When the M4.5 prerequisites are met, the implementation will be:
+When the M4.5 prerequisites are met, the implementation will be shaped like
+the sketch below. **Nothing here is shipped or implemented**: the monitor
+manifest does not exist in this plugin, no monitor entry point has been
+written, and the `command` field is left as prose on purpose — writing a
+plugin-rooted path for a file that does not exist would be a reference an
+agent could try to resolve, and in an installed plugin the only place it
+could resolve is the project being analysed.
 
 ```jsonc
-// .claude-plugin/monitors/monitors.json (M4.5)
+// monitor manifest (M4.5 proposal) — would live under the plugin's
+// .claude-plugin directory; no such file exists in this plugin today
 {
   "monitors": [
     {
       "name": "suite-telemetry-watch",
-      "command": "node ${CLAUDE_PLUGIN_DIR}/scripts/monitor-suite-metrics.js",
+      "command": "<the monitor entry point M4.5 would add — unwritten today>",
       "trigger": "interval",
       "interval_seconds": 300
     }
@@ -97,9 +104,9 @@ When the M4.5 prerequisites are met, the implementation will be:
 }
 ```
 
-Where `monitor-suite-metrics.js` reads the trailing N records and emits a
-line only when a metric crosses a 2σ threshold. This stays interaction-light
-and skips the "tail every line" notification trap.
+That entry point would read the trailing N records and emit a line only when
+a metric crosses a 2σ threshold. This stays interaction-light and skips the
+"tail every line" notification trap.
 
 ## Why not REJECT?
 
