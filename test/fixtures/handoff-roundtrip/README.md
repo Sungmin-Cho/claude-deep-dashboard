@@ -4,12 +4,12 @@ These four envelope-wrapped artifacts are the **canonical consumer-side input
 set** for the M5.7.B end-to-end regression guard
 (`lib/e2e-suite-roundtrip.test.js`).
 
-**Source of truth**: `claude-deep-suite/tests/fixtures/handoff-roundtrip/`
+**Source of truth**: `deep-suite/tests/fixtures/handoff-roundtrip/`
 (`docs/test-catalog.md` §9). Suite PR #24, merge `0ca870e`.
 
 This is a **byte-identical mirror** maintained manually. When the suite repo
 publishes a fixture update (any change under
-`tests/fixtures/handoff-roundtrip/` in claude-deep-suite), the same files
+`tests/fixtures/handoff-roundtrip/` in deep-suite), the same files
 MUST be re-mirrored here before the next dashboard release. The drift
 is detected at consumer time by `lib/e2e-suite-roundtrip.test.js` failing
 its metric assertions — values are derived from the fixture math and pinned.
@@ -36,10 +36,10 @@ fires and the maintainer re-mirrors + re-pins.
 ## Why mirror instead of cross-repo path / fetch
 
 - Suite-repo fixture is **dev-tool input**, not a runtime dependency. No
-  npm dependency on claude-deep-suite.
+  npm dependency on deep-suite.
 - gh-api fetch at test time would couple test execution to network +
   GitHub-API rate limits (CI flake risk).
-- Path reference (`../claude-deep-suite/...`) depends on user-local
+- Path reference (`../deep-suite/...`) depends on user-local
   sibling-directory layout — brittle across machines and CI.
 
 Manual mirror is the simplest invariant: "the same bytes are in two places".

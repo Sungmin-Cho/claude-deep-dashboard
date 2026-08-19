@@ -186,7 +186,7 @@ Closes the M4 milestone: 16 suite-level metrics, time-series JSONL accumulation,
 
 ### Changed
 
-- `.deep-dashboard/harnessability-report.json` now wraps in the claude-deep-suite M3 cross-plugin envelope: top-level `schema_version: "1.0"` + `envelope` block + `payload`. Domain data now lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`, …).
+- `.deep-dashboard/harnessability-report.json` now wraps in the deep-suite M3 cross-plugin envelope: top-level `schema_version: "1.0"` + `envelope` block + `payload`. Domain data now lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`, …).
 - The scorer CLI prints the envelope JSON on stdout (matching the disk file), and `saveReport()` returns `{ path, envelope }` so callers can forward the envelope without re-reading the file.
 - The collector is now M3 envelope-aware: it detects the envelope wrapper, enforces identity guards (producer / artifact_kind / schema.name), and unwraps the inner payload. Legacy un-wrapped artifacts pass through; identity-mismatched envelopes resolve to `null` with a stderr warning.
 

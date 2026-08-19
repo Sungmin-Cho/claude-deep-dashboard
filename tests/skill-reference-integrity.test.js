@@ -885,7 +885,7 @@ test('markdown link destinations are never the plugin-root placeholder', () => {
     'see [the guide](AGENTS.md) and [the CLI](../deep-harnessability/SKILL.md)', // correct
     'see [the guide](<plugin-root>/AGENTS.md)',                                  // placeholder
     'see [the CLI](${CLAUDE_PLUGIN_ROOT}/scripts/dashboard-cli.js)',             // variable
-    'the wrapper is <https://github.com/Sungmin-Cho/claude-deep-suite>',         // autolink
+    'the wrapper is <https://github.com/Sungmin-Cho/deep-suite>',         // autolink
   ].join('\n');
   assert.deepEqual(
     unexpandedLinkDestinations([fake], () => body).map((o) => o.split(':')[1].split(' ')[0]),

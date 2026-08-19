@@ -2,11 +2,11 @@
 
 # deep-dashboard
 
-![version](https://img.shields.io/github/package-json/v/Sungmin-Cho/claude-deep-dashboard?label=version)
-![license](https://img.shields.io/github/license/Sungmin-Cho/claude-deep-dashboard)
-[![part of deep-suite](https://img.shields.io/badge/part%20of-deep--suite-5b8def)](https://github.com/Sungmin-Cho/claude-deep-suite)
+![version](https://img.shields.io/github/package-json/v/Sungmin-Cho/deep-dashboard?label=version)
+![license](https://img.shields.io/github/license/Sungmin-Cho/deep-dashboard)
+[![part of deep-suite](https://img.shields.io/badge/part%20of-deep--suite-5b8def)](https://github.com/Sungmin-Cho/deep-suite)
 
-> Cross-plugin harness diagnostics for the [claude-deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) ecosystem.
+> Cross-plugin harness diagnostics for the [deep-suite](https://github.com/Sungmin-Cho/deep-suite) ecosystem.
 
 deep-dashboard measures how "harness-able" a codebase is, aggregates sensor signals from the other deep-suite plugins into a single effectiveness view, and accumulates a cross-plugin telemetry time-series. It is a **read-only consumer** — it never writes to another plugin's output directory.
 
@@ -17,7 +17,7 @@ It ships native manifests for both runtimes: the Claude Code manifest in `.claud
 deep-dashboard is the **harness diagnostics layer**, implementing two ideas from the [Harness Engineering](https://martinfowler.com/articles/harness-engineering.html) framework:
 
 - **Harnessability assessment** — a quantitative 0–10 measure of codebase readiness across 6 dimensions (17 computational detectors).
-- **Human steering loop** — a unified dashboard that aggregates sensor results from [deep-work](https://github.com/Sungmin-Cho/claude-deep-work), [deep-review](https://github.com/Sungmin-Cho/claude-deep-review), [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs), and [deep-evolve](https://github.com/Sungmin-Cho/claude-deep-evolve) into one effectiveness score with action routing.
+- **Human steering loop** — a unified dashboard that aggregates sensor results from [deep-work](https://github.com/Sungmin-Cho/deep-work), [deep-review](https://github.com/Sungmin-Cho/deep-review), [deep-docs](https://github.com/Sungmin-Cho/deep-docs), and [deep-evolve](https://github.com/Sungmin-Cho/deep-evolve) into one effectiveness score with action routing.
 
 In the framework's 2×2 matrix it operates as a **Computational Sensor** in the Continuous timing band — it runs outside the development lifecycle to measure harness effectiveness over time.
 
@@ -30,7 +30,7 @@ Via the `claude-deep-suite` marketplace:
 /plugin install deep-dashboard@claude-deep-suite
 
 # Codex
-codex plugin marketplace add Sungmin-Cho/claude-deep-suite
+codex plugin marketplace add Sungmin-Cho/deep-suite
 codex plugin add deep-dashboard@claude-deep-suite
 ```
 
@@ -137,7 +137,7 @@ Each dimension scores 0–10 from the fraction of its checks that pass. Ecosyste
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed read-only by deep-work Phase 1 Research, which applies its own 7-day staleness window and never re-runs the scorer, and by `/deep-harness-dashboard`, whose legacy mode does re-run the scorer when the report is missing or ≥ 24 hours old.
+The report is saved to `.deep-dashboard/harnessability-report.json`, wrapped in the [deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/deep-suite/blob/main/docs/envelope-migration.md) (`schema_version: "1.0"` + `envelope` block + `payload`). Domain data lives at `.payload.*` (`total`, `grade`, `dimensions`, `recommendations`). It is consumed read-only by deep-work Phase 1 Research, which applies its own 7-day staleness window and never re-runs the scorer, and by `/deep-harness-dashboard`, whose legacy mode does re-run the scorer when the report is missing or ≥ 24 hours old.
 
 ## Unified dashboard
 
@@ -223,8 +223,8 @@ The scorer, collector, effectiveness calculator, action router, and formatter ar
 ## Links
 
 - [Changelog](CHANGELOG.md)
-- [deep-suite marketplace](https://github.com/Sungmin-Cho/claude-deep-suite)
-- Related plugins: [deep-work](https://github.com/Sungmin-Cho/claude-deep-work) · [deep-review](https://github.com/Sungmin-Cho/claude-deep-review) · [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs) · [deep-evolve](https://github.com/Sungmin-Cho/claude-deep-evolve) · [deep-wiki](https://github.com/Sungmin-Cho/claude-deep-wiki)
+- [deep-suite marketplace](https://github.com/Sungmin-Cho/deep-suite)
+- Related plugins: [deep-work](https://github.com/Sungmin-Cho/deep-work) · [deep-review](https://github.com/Sungmin-Cho/deep-review) · [deep-docs](https://github.com/Sungmin-Cho/deep-docs) · [deep-evolve](https://github.com/Sungmin-Cho/deep-evolve) · [deep-wiki](https://github.com/Sungmin-Cho/deep-wiki)
 
 ## License
 

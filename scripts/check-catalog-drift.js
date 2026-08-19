@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Catalog drift checker — guards against silent drift between
- *   claude-deep-dashboard/lib/test-catalog-manifest.json   (dashboard-internal)
- *   claude-deep-suite/docs/test-catalog.md                 (authoritative)
+ *   deep-dashboard/lib/test-catalog-manifest.json   (dashboard-internal)
+ *   deep-suite/docs/test-catalog.md                 (authoritative)
  *
  * The dashboard manifest is the single source of truth for the
  * suite.tests.coverage_per_plugin metric (M5.5-activated, v1.3.2). It
@@ -19,7 +19,7 @@
  * Suite-catalog source resolution (first hit wins):
  *   1. `--suite-path=<path>` flag      — local file (dev convenience)
  *   2. `SUITE_REPO_LOCAL=<path>` env   — local file (CI optionally)
- *   3. `gh api repos/Sungmin-Cho/claude-deep-suite/contents/docs/test-catalog.md`
+ *   3. `gh api repos/Sungmin-Cho/deep-suite/contents/docs/test-catalog.md`
  *                                       — CI default, requires gh CLI in PATH
  *
  * Mirrors the suite-repo manifest-doc-sync.yml pattern at the dashboard
@@ -173,7 +173,7 @@ function resolveSuiteCatalog() {
       'gh',
       [
         'api',
-        'repos/Sungmin-Cho/claude-deep-suite/contents/docs/test-catalog.md',
+        'repos/Sungmin-Cho/deep-suite/contents/docs/test-catalog.md',
         '-H', 'Accept: application/vnd.github.raw',
       ],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }

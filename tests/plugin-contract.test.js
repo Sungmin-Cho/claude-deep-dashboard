@@ -103,7 +103,7 @@ test('catalog drift stays Ubuntu-only but uses Node 22', async () => {
 test('README files use the current two-command Codex marketplace flow', async () => {
   for (const path of ['README.md', 'README.ko.md']) {
     const text = await readText(path);
-    assert.match(text, /codex plugin marketplace add Sungmin-Cho\/claude-deep-suite/);
+    assert.match(text, /codex plugin marketplace add Sungmin-Cho\/deep-suite/);
     assert.match(text, /codex plugin add deep-dashboard@claude-deep-suite/);
     assert.doesNotMatch(text, /codex plugin install deep-dashboard/);
   }

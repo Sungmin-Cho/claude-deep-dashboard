@@ -2,14 +2,14 @@
 
 Thanks for your interest in improving **deep-dashboard** — the cross-plugin
 harness diagnostics and suite-telemetry plugin in the
-[Deep Suite](https://github.com/Sungmin-Cho/claude-deep-suite) family for
+[Deep Suite](https://github.com/Sungmin-Cho/deep-suite) family for
 Claude Code and Codex.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/Sungmin-Cho/claude-deep-dashboard.git
-cd claude-deep-dashboard
+git clone https://github.com/Sungmin-Cho/deep-dashboard.git
+cd deep-dashboard
 ```
 
 Node 22+ is required (ESM project) on Windows, macOS, and Linux. There are no runtime dependencies — the
