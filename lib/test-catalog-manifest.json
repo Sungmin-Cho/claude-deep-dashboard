@@ -1,8 +1,8 @@
 {
-  "$comment": "M5.5 test catalog manifest. Single source of truth for suite.tests.coverage_per_plugin metric aggregation. Mirrors claude-deep-suite docs/test-catalog.md §1-§8 1:1. When the suite-repo catalog updates (test added / status changes), this manifest MUST update in lockstep — similar to ADOPTION_LEDGER in suite-constants.js. Catalog drift is not validated by CI; it is a manual review-time check (CHANGELOG entry should call out the manifest update).",
+  "$comment": "M5.5 test catalog manifest. Single source of truth for suite.tests.coverage_per_plugin metric aggregation. Mirrors deep-suite docs/test-catalog.md §1-§8 1:1. When the suite-repo catalog updates (test added / status changes), this manifest MUST update in lockstep — similar to ADOPTION_LEDGER in suite-constants.js. Catalog drift is not validated by CI; it is a manual review-time check (CHANGELOG entry should call out the manifest update).",
   "catalog_version": "1.0",
   "last_updated": "2026-05-12",
-  "source_reference": "claude-deep-suite/docs/test-catalog.md",
+  "source_reference": "deep-suite/docs/test-catalog.md",
   "tests": [
     {
       "id": "1",

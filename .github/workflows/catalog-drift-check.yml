@@ -2,7 +2,7 @@ name: Catalog Drift Check
 
 # Guards against silent drift between
 #   lib/test-catalog-manifest.json                       (dashboard-internal)
-#   claude-deep-suite/docs/test-catalog.md               (authoritative)
+#   deep-suite/docs/test-catalog.md               (authoritative)
 #
 # The dashboard manifest is the single source of truth for the
 # suite.tests.coverage_per_plugin metric (M5.5-activated, v1.3.2). It

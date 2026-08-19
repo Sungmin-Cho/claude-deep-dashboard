@@ -8,7 +8,7 @@ Security fixes are delivered through the latest release of deep-dashboard. Run
 ## Reporting a vulnerability
 
 Please report security issues **privately** via
-[GitHub Security Advisories](https://github.com/Sungmin-Cho/claude-deep-dashboard/security/advisories/new)
+[GitHub Security Advisories](https://github.com/Sungmin-Cho/deep-dashboard/security/advisories/new)
 rather than opening a public issue.
 
 We aim to acknowledge reports within a few days and will coordinate a fix and a

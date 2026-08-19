@@ -71,7 +71,7 @@ combined with `--project-root` are usage errors.
 ## Output file
 
 `.deep-dashboard/harnessability-report.json` is a deep-suite M3 cross-plugin envelope
-(§1 of the envelope migration guide kept in the claude-deep-suite registry repo, not in this
+(§1 of the envelope migration guide kept in the deep-suite registry repo, not in this
 plugin): top-level `schema_version: "1.0"` + `envelope`
 (producer, run_id ULID, git, provenance) + `payload`, whose required fields are exactly
 `projectRoot`, `total`, `grade`, `dimensions`, `recommendations`.

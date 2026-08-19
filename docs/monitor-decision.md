@@ -1,7 +1,7 @@
 # Plugin Monitors — adoption decision
 
 > **Decision date**: 2026-05-11
-> **Spec reference**: claude-deep-suite/docs/deep-suite-harness-roadmap.md §M4, 4.6
+> **Spec reference**: deep-suite/docs/deep-suite-harness-roadmap.md §M4, 4.6
 > **Roadmap task**: M4 §4.6 plugin monitors spike + 의사결정 문서
 > **Decision**: **HOLD — defer to M4.5**
 
@@ -126,5 +126,5 @@ dashboard's signal quality and undermine the M4 telemetry mission.
 
 - **Follow-up milestone**: M4.5 — "Threshold-tuned suite monitors"
 - **Prerequisite signals**: 4 weeks of suite-metrics.jsonl on 2+ projects
-- **Owner**: claude-deep-dashboard maintainer (this plugin)
+- **Owner**: deep-dashboard maintainer (this plugin)
 - **Re-evaluate by**: 2026-08-11 (T+0 + 3 months)

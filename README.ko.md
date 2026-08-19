@@ -2,11 +2,11 @@
 
 # deep-dashboard
 
-![version](https://img.shields.io/github/package-json/v/Sungmin-Cho/claude-deep-dashboard?label=version)
-![license](https://img.shields.io/github/license/Sungmin-Cho/claude-deep-dashboard)
-[![part of deep-suite](https://img.shields.io/badge/part%20of-deep--suite-5b8def)](https://github.com/Sungmin-Cho/claude-deep-suite)
+![version](https://img.shields.io/github/package-json/v/Sungmin-Cho/deep-dashboard?label=version)
+![license](https://img.shields.io/github/license/Sungmin-Cho/deep-dashboard)
+[![part of deep-suite](https://img.shields.io/badge/part%20of-deep--suite-5b8def)](https://github.com/Sungmin-Cho/deep-suite)
 
-> [claude-deep-suite](https://github.com/Sungmin-Cho/claude-deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
+> [deep-suite](https://github.com/Sungmin-Cho/deep-suite) 생태계를 위한 크로스 플러그인 harness 진단 도구.
 
 deep-dashboard 는 코드베이스가 얼마나 "harness 가능"한지 측정하고, 다른 deep-suite 플러그인의 센서 신호를 하나의 효과성 뷰로 집계하며, 크로스 플러그인 텔레메트리 시계열을 누적한다. **읽기 전용 consumer** 로서 다른 플러그인의 출력 디렉터리에 절대 쓰지 않는다.
 
@@ -17,7 +17,7 @@ deep-dashboard 는 코드베이스가 얼마나 "harness 가능"한지 측정하
 deep-dashboard 는 **harness 진단 계층** 으로, [Harness Engineering](https://martinfowler.com/articles/harness-engineering.html) 프레임워크의 두 개념을 구현한다:
 
 - **Harnessability 평가** — 6차원(17개 계산 detector) 에 걸친 코드베이스 준비도의 정량적 0–10 측정.
-- **Human steering loop** — [deep-work](https://github.com/Sungmin-Cho/claude-deep-work), [deep-review](https://github.com/Sungmin-Cho/claude-deep-review), [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs), [deep-evolve](https://github.com/Sungmin-Cho/claude-deep-evolve) 의 센서 결과를 액션 라우팅과 함께 하나의 효과성 점수로 집계하는 통합 대시보드.
+- **Human steering loop** — [deep-work](https://github.com/Sungmin-Cho/deep-work), [deep-review](https://github.com/Sungmin-Cho/deep-review), [deep-docs](https://github.com/Sungmin-Cho/deep-docs), [deep-evolve](https://github.com/Sungmin-Cho/deep-evolve) 의 센서 결과를 액션 라우팅과 함께 하나의 효과성 점수로 집계하는 통합 대시보드.
 
 프레임워크의 2×2 매트릭스에서 **Computational Sensor** (Continuous 타이밍 밴드) 로 동작한다 — 개발 라이프사이클 밖에서 실행되어 harness 효과성을 시간에 따라 측정한다.
 
@@ -30,7 +30,7 @@ deep-dashboard 는 **harness 진단 계층** 으로, [Harness Engineering](https
 /plugin install deep-dashboard@claude-deep-suite
 
 # Codex
-codex plugin marketplace add Sungmin-Cho/claude-deep-suite
+codex plugin marketplace add Sungmin-Cho/deep-suite
 codex plugin add deep-dashboard@claude-deep-suite
 ```
 
@@ -138,7 +138,7 @@ PowerShell 경로는 `loadedSkillPath` 에서 완전히 resolve 해야 한다. `
 | Fair | 3.0–4.9 |
 | Poor | 0.0–2.9 |
 
-리포트는 [claude-deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/claude-deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research 와 `/deep-harness-dashboard` 가 소비한다. deep-work 는 자체 7일 staleness 기준을 적용하는 read-only 소비자로 scorer 를 재실행하지 않으며, `/deep-harness-dashboard` 의 legacy 모드는 리포트가 없거나 24시간 이상 경과했을 때 scorer 를 재실행한다.
+리포트는 [deep-suite M3 cross-plugin envelope](https://github.com/Sungmin-Cho/deep-suite/blob/main/docs/envelope-migration.md)(`schema_version: "1.0"` + `envelope` 블록 + `payload`) 로 wrap 되어 `.deep-dashboard/harnessability-report.json` 에 저장된다. domain data 는 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`) 에 위치한다. 이 리포트는 deep-work Phase 1 Research 와 `/deep-harness-dashboard` 가 소비한다. deep-work 는 자체 7일 staleness 기준을 적용하는 read-only 소비자로 scorer 를 재실행하지 않으며, `/deep-harness-dashboard` 의 legacy 모드는 리포트가 없거나 24시간 이상 경과했을 때 scorer 를 재실행한다.
 
 ## 통합 대시보드
 
@@ -224,8 +224,8 @@ scorer, collector, effectiveness 계산기, action router, formatter 는 모두 
 ## 링크
 
 - [변경 이력](CHANGELOG.ko.md)
-- [deep-suite 마켓플레이스](https://github.com/Sungmin-Cho/claude-deep-suite)
-- 관련 플러그인: [deep-work](https://github.com/Sungmin-Cho/claude-deep-work) · [deep-review](https://github.com/Sungmin-Cho/claude-deep-review) · [deep-docs](https://github.com/Sungmin-Cho/claude-deep-docs) · [deep-evolve](https://github.com/Sungmin-Cho/claude-deep-evolve) · [deep-wiki](https://github.com/Sungmin-Cho/claude-deep-wiki)
+- [deep-suite 마켓플레이스](https://github.com/Sungmin-Cho/deep-suite)
+- 관련 플러그인: [deep-work](https://github.com/Sungmin-Cho/deep-work) · [deep-review](https://github.com/Sungmin-Cho/deep-review) · [deep-docs](https://github.com/Sungmin-Cho/deep-docs) · [deep-evolve](https://github.com/Sungmin-Cho/deep-evolve) · [deep-wiki](https://github.com/Sungmin-Cho/deep-wiki)
 
 ## 라이선스
 

@@ -37,7 +37,7 @@ repo, unless it is an intentional fixture.
 - `<plugin-root>/lib/metrics-catalog.yaml` — authoritative spec for all 17 suite metrics.
 - `<plugin-root>/lib/harnessability/checklist.json` — dimension ids, weights, the 17 checks.
 - `<plugin-root>/lib/test-catalog-manifest.json` — mirror of §1–§8 of the test catalog kept in the
-  claude-deep-suite registry repo; `check:catalog-drift` fails on desync.
+  deep-suite registry repo; `check:catalog-drift` fails on desync.
 - `<plugin-root>/test/fixtures/handoff-roundtrip/` — byte-identical mirror of suite §9; re-copy on
   suite update before release. `<plugin-root>/lib/e2e-suite-roundtrip.test.js` asserts the M5
   metric values from it.
@@ -165,4 +165,4 @@ single source — never hand-edit marketplace manifests or suite READMEs. The on
 manually synced. This repo owns only its
 `CHANGELOG.md` entry and the version bump in `<plugin-root>/.claude-plugin/plugin.json`,
 `<plugin-root>/.codex-plugin/plugin.json`, and `package.json` (`npm run check:version-sync`).
-Suite marketplace: <https://github.com/Sungmin-Cho/claude-deep-suite>.
+Suite marketplace: <https://github.com/Sungmin-Cho/deep-suite>.

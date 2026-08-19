@@ -186,7 +186,7 @@ M4 마일스톤 종결: 16 suite-level 메트릭, 시계열 JSONL 누적, markdo
 
 ### 변경
 
-- `.deep-dashboard/harnessability-report.json` 이 이제 claude-deep-suite M3 cross-plugin envelope 으로 wrap 된다: top-level `schema_version: "1.0"` + `envelope` 블록 + `payload`. domain data 는 이제 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`, …)에 위치한다.
+- `.deep-dashboard/harnessability-report.json` 이 이제 deep-suite M3 cross-plugin envelope 으로 wrap 된다: top-level `schema_version: "1.0"` + `envelope` 블록 + `payload`. domain data 는 이제 `.payload.*`(`total`, `grade`, `dimensions`, `recommendations`, …)에 위치한다.
 - scorer CLI 가 stdout 으로 envelope JSON 을 출력(디스크 파일과 동일)하고, `saveReport()` 가 `{ path, envelope }` 를 반환해 호출자가 파일을 다시 읽지 않고 envelope 을 전달할 수 있다.
 - collector 가 M3 envelope-aware 로 전환: envelope 래퍼를 감지하고 identity 가드(producer / artifact_kind / schema.name)를 강제한 뒤 inner payload 를 unwrap 한다. legacy 비래핑 artifact 는 통과하고, identity 불일치 envelope 은 stderr 경고와 함께 `null` 처리된다.
 

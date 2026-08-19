@@ -1,6 +1,6 @@
 # Suite Telemetry Metric Catalog
 #
-# Spec: claude-deep-suite/docs/deep-suite-harness-roadmap.md §M4
+# Spec: deep-suite/docs/deep-suite-harness-roadmap.md §M4
 # Producer: deep-dashboard (this plugin)
 # Consumed by: lib/aggregator.js (computes), lib/formatter.js (renders)
 #
@@ -242,14 +242,14 @@ metrics:
 
   # ────────────────────────── M5-activated (3) ────────────────────────────
   # Promoted from M4-deferred → M4-core on 2026-05-11 once
-  # claude-deep-suite PRs #12/#13 ratified the upstream schemas
+  # deep-suite PRs #12/#13 ratified the upstream schemas
   # (schemas/handoff.schema.json + schemas/compaction-state.schema.json,
   # both schema_version "1.0", artifact_kind matches schema.name).
 
   - id: suite.compaction.frequency
     tier: M4-core
     unit: count
-    description: "Total count of compaction-state envelopes observed across long-running sessions. Source: claude-deep-suite/schemas/compaction-state.schema.json (artifact_kind=compaction-state, schema_version 1.0). Both flat-dir (.deep-<plugin>/compaction-states/*.json) and per-session-subdir (.deep-<plugin>/<session>/compaction-state.json) layouts are discovered."
+    description: "Total count of compaction-state envelopes observed across long-running sessions. Source: deep-suite/schemas/compaction-state.schema.json (artifact_kind=compaction-state, schema_version 1.0). Both flat-dir (.deep-<plugin>/compaction-states/*.json) and per-session-subdir (.deep-<plugin>/<session>/compaction-state.json) layouts are discovered."
     source:
       - producer: deep-work
         kind: compaction-state
@@ -265,7 +265,7 @@ metrics:
   - id: suite.compaction.preserved_artifact_ratio
     tier: M4-core
     unit: ratio
-    description: "Mean preserved-artifact ratio across compaction events. Source: claude-deep-suite/schemas/compaction-state.schema.json (preserved_artifact_paths / discarded_artifact_paths)."
+    description: "Mean preserved-artifact ratio across compaction events. Source: deep-suite/schemas/compaction-state.schema.json (preserved_artifact_paths / discarded_artifact_paths)."
     source:
       - producer: deep-work
         kind: compaction-state
@@ -275,13 +275,13 @@ metrics:
         kind: compaction-state
         path_glob: ".deep-evolve/{compaction-states/*,*/compaction-state}.json"
         schema_id: "deep-suite/compaction-state/v1.0"
-    aggregation: "mean over compaction-state envelopes (across producers) of `len(preserved_artifact_paths) / (len(preserved_artifact_paths) + len(discarded_artifact_paths))`. Per claude-deep-suite/guides/context-management.md §5: envelopes that omit discarded_artifact_paths contribute UNDEFINED (not zero) and are excluded from the mean. Full-reset envelopes (both arrays empty) are also excluded — avoids a misleading 0/0 → 0 reading."
+    aggregation: "mean over compaction-state envelopes (across producers) of `len(preserved_artifact_paths) / (len(preserved_artifact_paths) + len(discarded_artifact_paths))`. Per deep-suite/guides/context-management.md §5: envelopes that omit discarded_artifact_paths contribute UNDEFINED (not zero) and are excluded from the mean. Full-reset envelopes (both arrays empty) are also excluded — avoids a misleading 0/0 → 0 reading."
     null_when: "no compaction-state envelope provides both preserved + discarded paths"
 
   - id: suite.handoff.roundtrip_success_rate
     tier: M4-core
     unit: ratio
-    description: "Fraction of INITIATING handoff envelopes that round-tripped — i.e., a downstream non-aggregator envelope emitted by the declared receiver (payload.to.producer) carries parent_run_id chaining back to the handoff's run_id. Source: claude-deep-suite/schemas/handoff.schema.json (artifact_kind=handoff). Both producers (deep-work forward + deep-evolve reverse) are aggregated into a single rate; reverse handoffs that themselves chain back to a forward handoff are continuation signals, excluded from the denominator (they are themselves the round-trip evidence for the upstream handoff)."
+    description: "Fraction of INITIATING handoff envelopes that round-tripped — i.e., a downstream non-aggregator envelope emitted by the declared receiver (payload.to.producer) carries parent_run_id chaining back to the handoff's run_id. Source: deep-suite/schemas/handoff.schema.json (artifact_kind=handoff). Both producers (deep-work forward + deep-evolve reverse) are aggregated into a single rate; reverse handoffs that themselves chain back to a forward handoff are continuation signals, excluded from the denominator (they are themselves the round-trip evidence for the upstream handoff)."
     source:
       - producer: deep-work
         kind: handoff
@@ -291,12 +291,12 @@ metrics:
         kind: handoff
         path_glob: ".deep-evolve/{handoffs/*,*/handoff}.json"
         schema_id: "deep-suite/handoff/v1.0"
-    aggregation: "count(INITIATING handoffs whose run_id appears as a parent_run_id of any non-aggregator envelope produced by their declared payload.to.producer) / count(INITIATING handoffs). Per claude-deep-suite/guides/long-run-handoff.md §7: 'the receiver either emits a reverse handoff back, OR emits a final receipt'. A handoff is INITIATING when its parent_run_id is absent or does not chain to another handoff (Round 3 fix: continuation handoffs are excluded from the denominator). Aggregator-kind envelopes (harnessability-report, evolve-insights, index) are excluded from the child side per the same guide; they index, they don't continue a thread. Handoffs missing payload.to.producer are kept in the denominator but cannot match any child → defensively excluded from the numerator."
+    aggregation: "count(INITIATING handoffs whose run_id appears as a parent_run_id of any non-aggregator envelope produced by their declared payload.to.producer) / count(INITIATING handoffs). Per deep-suite/guides/long-run-handoff.md §7: 'the receiver either emits a reverse handoff back, OR emits a final receipt'. A handoff is INITIATING when its parent_run_id is absent or does not chain to another handoff (Round 3 fix: continuation handoffs are excluded from the denominator). Aggregator-kind envelopes (harnessability-report, evolve-insights, index) are excluded from the child side per the same guide; they index, they don't continue a thread. Handoffs missing payload.to.producer are kept in the denominator but cannot match any child → defensively excluded from the numerator."
     null_when: "no initiating handoff envelopes present (all observed handoffs are continuations)"
 
   # ────────────────────────── M5.5-activated (1) ──────────────────────────
   # Promoted from M4-deferred → M4-core on 2026-05-12 once
-  # claude-deep-suite M5.5 closure (8/8 done) ratified the test catalog:
+  # deep-suite M5.5 closure (8/8 done) ratified the test catalog:
   #   - suite PR #20 `62610c9c` — 6/6 plugin tests ship batch
   #   - suite PR #21 `d0dabc9f` — deep-review v1.4.2 cross-platform fix
   #   - docs/test-catalog.md §1-§8 all done
